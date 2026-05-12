@@ -25,14 +25,16 @@ export default function OfferViewer({ html, css, name, checkoutType = 'scroll' }
     if (!mounted) return;
 
     const handleClick = (e) => {
+      console.log('checkoutType:', checkoutType);
       const button = e.target.closest('button, a');
       if (!button) return;
 
-      // Skip if click is inside checkout section (modal or scroll mode)
-      const inCheckoutSection = e.target.closest('#order') ||
-                                  button.closest('[class*="CheckoutSection"]') ||
-                                  button.closest('[class*="order"]');
-      if (inCheckoutSection) return;
+      // Only process clicks in popup mode
+      if (checkoutType !== 'popup') return;
+
+      // Skip if click is inside checkout section (modal)
+      const inModal = e.target.closest('.fixed.inset-0');
+      if (inModal) return;
 
       const href = button.getAttribute('href') || '';
       const className = (button.className || '').toString().toLowerCase();
@@ -57,9 +59,9 @@ export default function OfferViewer({ html, css, name, checkoutType = 'scroll' }
       }
     };
 
-    document.addEventListener('click', handleClick, true);
-    return () => document.removeEventListener('click', handleClick, true);
-  }, [mounted, openModal]);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [mounted, openModal, checkoutType]);
 
   if (!mounted) {
     return (
