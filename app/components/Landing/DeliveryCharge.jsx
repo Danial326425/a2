@@ -4,15 +4,18 @@ import { FiMapPin, FiTruck, FiClock, FiDollarSign, FiInfo } from 'react-icons/fi
 const DeliveryCharge = ({ handleDeliveryChange, deliveryArea, setSelectedDeliveryCharge }) => {
     const [selectedArea, setSelectedArea] = useState(null);
 
+    // Ensure deliveryArea is always an array
+    const areas = Array.isArray(deliveryArea) ? deliveryArea : [];
+
     // ডিফল্ট হিসেবে প্রথম এলাকা সিলেক্ট করুন
     useEffect(() => {
-        if (deliveryArea.length > 0 && !selectedArea) {
-            const firstArea = deliveryArea[0];
+        if (areas.length > 0 && !selectedArea) {
+            const firstArea = areas[0];
             setSelectedArea(firstArea);
             setSelectedDeliveryCharge(firstArea.delivery_charge);
             handleDeliveryChange(firstArea.delivery_charge);
         }
-    }, [deliveryArea]);
+    }, [areas]);
 
     // এলাকা সিলেক্ট করার হ্যান্ডলার
     const handleAreaSelect = (area) => {
@@ -30,7 +33,7 @@ const DeliveryCharge = ({ handleDeliveryChange, deliveryArea, setSelectedDeliver
                 </label>
 
                 {/* Loading state */}
-                {deliveryArea.length === 0 && (
+                {areas.length === 0 && (
                     <div className="p-4 bg-gray-50 rounded-lg flex items-center justify-center">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500 mr-3"></div>
                         <span className="text-gray-600">ডেলিভারি এলাকার তথ্য লোড হচ্ছে...</span>
@@ -39,7 +42,7 @@ const DeliveryCharge = ({ handleDeliveryChange, deliveryArea, setSelectedDeliver
 
                 {/* District options */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                    {deliveryArea.map((area) => (
+                    {areas.map((area) => (
                         <div 
                             key={area.id}
                             onClick={() => handleAreaSelect(area)}
@@ -111,7 +114,7 @@ const DeliveryCharge = ({ handleDeliveryChange, deliveryArea, setSelectedDeliver
                 )} */}
 
                 {/* Help text */}
-                {deliveryArea.length === 0 && (
+                {areas.length === 0 && (
                     <p className="mt-3 text-sm text-gray-500 flex items-center">
                         <FiInfo className="mr-1.5 text-blue-500" />
                         আপনার এলাকা সিলেক্ট করে ডেলিভারি চার্জ ও সময় দেখুন

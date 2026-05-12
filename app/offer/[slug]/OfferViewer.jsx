@@ -28,6 +28,12 @@ export default function OfferViewer({ html, css, name, checkoutType = 'scroll' }
       const button = e.target.closest('button, a');
       if (!button) return;
 
+      // Skip if click is inside checkout section (modal or scroll mode)
+      const inCheckoutSection = e.target.closest('#order') ||
+                                  button.closest('[class*="CheckoutSection"]') ||
+                                  button.closest('[class*="order"]');
+      if (inCheckoutSection) return;
+
       const href = button.getAttribute('href') || '';
       const className = (button.className || '').toString().toLowerCase();
       const text = (button.textContent || '').toString().toLowerCase();

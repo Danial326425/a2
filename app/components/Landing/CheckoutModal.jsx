@@ -1,22 +1,25 @@
 import React, { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, ShoppingCart, Shield, Truck, Check } from 'lucide-react';
 import CheckoutSection from './CheckoutSection';
 
 const ModalHeader = ({ onClose }) => (
   <div className="sticky top-0 z-10 flex items-center justify-between
-                  bg-white/95 backdrop-blur-sm border-b border-gray-100
-                  px-4 py-2.5 flex-shrink-0">
-    <p className="text-sm font-bold text-gray-700 flex items-center gap-2">
-      🛒 অর্ডার করুন
-    </p>
+                  bg-gradient-to-r from-emerald-600 to-green-600 text-white
+                  px-4 py-3 flex-shrink-0 shadow-lg">
+    <div className="flex items-center gap-2">
+      <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+        <ShoppingCart size={16} className="text-white" />
+      </div>
+      <p className="font-bold text-base">নিরাপদ অর্ডার করুন</p>
+    </div>
     <button
       onClick={onClose}
       aria-label="Close"
-      className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center
-                 hover:bg-gray-200 active:scale-90 transition-all"
+      className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center
+                 hover:bg-white/30 active:scale-90 transition-all"
     >
-      <X size={16} className="text-gray-600" />
+      <X size={18} className="text-white" />
     </button>
   </div>
 );
@@ -24,7 +27,6 @@ const ModalHeader = ({ onClose }) => (
 const CheckoutModal = ({ open, onClose }) => {
   const savedScrollY = useRef(0);
 
-  // ESC key
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -32,7 +34,6 @@ const CheckoutModal = ({ open, onClose }) => {
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  // Body scroll lock — position:fixed trick works on iOS Safari too
   useEffect(() => {
     if (!open) return;
     savedScrollY.current = window.scrollY;
@@ -49,78 +50,92 @@ const CheckoutModal = ({ open, onClose }) => {
     };
   }, [open]);
 
+  if (!open) return null;
+
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            key="modal-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
-          />
+    <>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={onClose}
+        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+      />
 
-          {/* ── Mobile: bottom sheet ─────────────────────────── */}
-          <motion.div
-            key="modal-mobile"
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-            className="fixed inset-x-0 bottom-0 z-[101] md:hidden"
-            style={{ maxHeight: '92dvh' }}
-          >
-            <div
-              className="bg-white rounded-t-3xl flex flex-col overflow-hidden"
-              style={{ maxHeight: '92dvh' }}
-            >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-                <div className="w-10 h-1.5 bg-gray-300 rounded-full" />
+      {/* ── Mobile: Full Screen Bottom Sheet ─────────────────────────── */}
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+        className="fixed inset-x-0 bottom-0 z-[101] md:hidden rounded-t-3xl"
+        style={{ height: '95dvh', maxHeight: '95dvh' }}
+      >
+        <div className="h-full flex flex-col bg-white rounded-t-3xl overflow-hidden shadow-2xl">
+          <ModalHeader onClose={onClose} />
+
+          {/* Mobile Trust Badges */}
+          <div className="bg-emerald-50 px-4 py-2 flex items-center justify-center gap-4 text-xs text-emerald-700 border-b border-emerald-100">
+            <span className="flex items-center gap-1"><Shield size={12} />নিরাপদ পেমেন্ট</span>
+            <span className="flex items-center gap-1"><Truck size={12} />দ্রুত ডেলিভারি</span>
+            <span className="flex items-center gap-1"><Check size={12} />সহজ রিটার্ন</span>
+          </div>
+
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto overscroll-contain pb-safe">
+            <CheckoutSection isModal onClose={onClose} />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── Desktop: Centered Card ───────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        onClick={onClose}
+        className="hidden md:flex fixed inset-0 z-[101] items-center justify-center p-4"
+      >
+        <div
+          className="relative bg-white rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col overflow-hidden"
+          style={{ maxHeight: '92dvh' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Desktop Header */}
+          <div className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <ShoppingCart size={20} className="text-white" />
               </div>
-              <ModalHeader onClose={onClose} />
-              {/* Scrollable body */}
-              <div
-                className="flex-1 overflow-y-auto overscroll-contain"
-                style={{ WebkitOverflowScrolling: 'touch', height: 'calc(92dvh - 120px)' }}
-              >
-                <CheckoutSection isModal noVariants onClose={onClose} />
+              <div>
+                <p className="font-bold text-lg">অর্ডার ফর্ম</p>
+                <p className="text-xs text-emerald-100">পণ্য হাতে পেয়ে পেমেন্ট করুন</p>
               </div>
             </div>
-          </motion.div>
-
-          {/* ── Desktop: centered card ───────────────────────── */}
-          <motion.div
-            key="modal-desktop"
-            initial={{ opacity: 0, scale: 0.96, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 16 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            onClick={onClose}
-            className="hidden md:flex fixed inset-0 z-[101] items-center justify-center p-4"
-          >
-            <div
-              className="relative bg-white rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col overflow-hidden"
-              style={{ maxHeight: '90dvh' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ModalHeader onClose={onClose} />
-              {/* Scrollable body */}
-              <div
-                className="flex-1 overflow-y-auto overscroll-contain"
-                style={{ WebkitOverflowScrolling: 'touch', height: 'calc(90dvh - 60px)' }}
-              >
-                <CheckoutSection isModal noVariants onClose={onClose} />
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Shield size={14} />
+                <span>নিরাপদ</span>
               </div>
+              <button
+                onClick={onClose}
+                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all"
+              >
+                <X size={18} />
+              </button>
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          </div>
+
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <CheckoutSection isModal onClose={onClose} />
+          </div>
+        </div>
+      </motion.div>
+    </>
   );
 };
 

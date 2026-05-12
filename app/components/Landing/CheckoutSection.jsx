@@ -7,7 +7,6 @@ import { ProductContext } from "../../context/ProductsContext";
 import bdLocations from "../../data/locations";
 import { useParams } from "next/navigation";
 import { trackBrowserEvent, sendCAPIEvent, generateEventId } from "@/pixel";
-import { createApiService } from "../../lib/api";
 import { track } from "../../lib/tracking";
 import DeliveryCharge from "./DeliveryCharge";
 import {
@@ -85,18 +84,24 @@ const inputCls = (hasErr) => cls(
 );
 
 // ─── Qty stepper ──────────────────────────────────────────────────────────────
-const QtyBtn = React.memo(({ onClick, children, disabled }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className="w-9 h-9 flex items-center justify-center rounded-lg border-2 border-gray-200
+const QtyBtn = ({ onClick, children, disabled }) => {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
+      disabled={disabled}
+      className="w-9 h-9 flex items-center justify-center rounded-lg border-2 border-gray-200
                text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50
                active:scale-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-  >
-    {children}
-  </button>
-));
+    >
+      {children}
+    </button>
+  );
+};
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CheckoutSection
@@ -166,19 +171,41 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
   // ── Fetch landing page data + delivery charges in parallel ──────────────────
   useEffect(() => {
     let cancelled = false;
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+    console.log('API_BASE:', API_BASE);
+
     (async () => {
       try {
         setLoading(true);
-        const [pageRes, chargesRes] = await Promise.all([
-          api().get(`/landing-pages/offer/${slug}`),
-          api().get('/deliverycharges'),
-        ]);
+
+        // Fetch landing page
+        const pageResponse = await fetch(`${API_BASE}/landing-pages/offer/${slug}`);
+        const pageRes = await pageResponse.json();
+        console.log('Page response:', pageRes);
+
+        // Fetch delivery charges
+        const chargesResponse = await fetch(`${API_BASE}/deliverycharges`);
+        const chargesRes = await chargesResponse.json();
+        console.log('Charges response:', chargesRes);
+
         if (cancelled) return;
-        const d = pageRes.data?.data;
+
+        const d = pageRes?.data;
         setData(d);
         setPrice(d?.product?.discount_price || d?.product?.price || 0);
-        setDeliveryArea(chargesRes.data || []);
-      } catch {
+
+        // Handle both array and object response formats
+        let areas = [];
+        if (Array.isArray(chargesRes)) {
+          areas = chargesRes;
+        } else if (chargesRes?.data && Array.isArray(chargesRes.data)) {
+          areas = chargesRes.data;
+        }
+        console.log('Setting delivery areas:', areas);
+        setDeliveryArea(areas);
+      } catch (err) {
+        console.error('Fetch error:', err);
         if (!cancelled) setError('ডেটা লোড করতে সমস্যা হয়েছে।');
       } finally {
         if (!cancelled) setLoading(false);
@@ -287,7 +314,10 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
   };
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
-  const handleQtyChange   = (n) => setQty(Math.max(1, n));
+  const handleQtyChange = (n) => {
+    const newQty = Math.max(1, n);
+    setQty(newQty);
+  };
 
   const handleBulkDiscountSelect = (d) => {
     setSelectedBulkDiscount(d);
@@ -375,16 +405,19 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
     setIsSubmitting(true);
 
     try {
-      const res = await api().post('/customers', orderData);
-      if (res.status === 200 || res.status === 201) {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+      const res = await fetch(`${API_BASE}/customers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      });
+      if (res.ok) {
         track('order', slug);
         window.location.href = `/thankyou/${orderId}`;
-        return; // keep spinner while navigating
+        return;
       }
     } catch (err) {
-      const msg = err?.response?.data?.message
-        || err?.message
-        || 'অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।';
+      const msg = err?.message || 'অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।';
       alert(msg);
     }
 
@@ -434,37 +467,41 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
     <div id="order" ref={sectionRef} className="scroll-mt-4">
       <style>{shakeAnimation}</style>
 
-      {/* ── Urgency Strip ──────────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white py-2.5 px-4">
-        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs sm:text-sm font-semibold text-center">
-          <span className="flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+      {/* ── Urgency Strip (hidden in modal) ─────────────────────────────── */}
+      {!isModal && (
+        <div className="bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 text-white py-2.5 px-4">
+          <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs sm:text-sm font-semibold text-center">
+            <span className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+              </span>
+              {viewers} জন এখন দেখছেন
             </span>
-            {viewers} জন এখন দেখছেন
-          </span>
-          <span>⚡ সীমিত স্টক বাকি!</span>
-          <span>🚚 আজই অর্ডার করুন, দ্রুত পাবেন</span>
+            <span>⚡ সীমিত স্টক বাকি!</span>
+            <span>🚚 আজই অর্ডার করুন, দ্রুত পাবেন</span>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={cls("bg-gradient-to-b from-gray-50 to-white", !isModal && "min-h-screen")}>
-        <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12">
+        <div className={cls("mx-auto", isModal ? "px-4 py-4" : "px-4 py-8 sm:py-12 max-w-5xl")}>
 
-          {/* ── Section Header ──────────────────────────────────────────────── */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 rounded-full px-4 py-1.5 text-sm font-semibold mb-3">
-              <ShoppingCart size={15} />
-              অর্ডার ফর্ম
+          {/* ── Section Header (hidden in modal) ─────────────────────────── */}
+          {!isModal && (
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 rounded-full px-4 py-1.5 text-sm font-semibold mb-3">
+                <ShoppingCart size={15} />
+                অর্ডার ফর্ম
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
+                অর্ডার করতে নিচের তথ্য দিন
+              </h2>
+              <p className="text-gray-500 mt-2 text-sm">
+                পণ্য হাতে পেয়ে পেমেন্ট করুন — কোনো অগ্রিম পেমেন্ট নেই
+              </p>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
-              অর্ডার করতে নিচের তথ্য দিন
-            </h2>
-            <p className="text-gray-500 mt-2 text-sm">
-              পণ্য হাতে পেয়ে পেমেন্ট করুন — কোনো অগ্রিম পেমেন্ট নেই
-            </p>
-          </div>
+          )}
 
           {/* ── Main Two-Column Grid ──────────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
@@ -473,7 +510,7 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
             <div className="space-y-5">
 
               {/* Color & Size Selection */}
-              {!noVariants && hasOptions && (
+              {hasOptions && (
                 <div
                   ref={sizeRef}
                   className={cls(
@@ -608,9 +645,22 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <QtyBtn onClick={() => handleQtyChange(qty - 1)} disabled={qty <= 1}><Minus size={14} /></QtyBtn>
+                        <button
+                          type="button"
+                          onClick={() => handleQtyChange(qty - 1)}
+                          disabled={qty <= 1}
+                          className="w-9 h-9 flex items-center justify-center rounded-lg border-2 border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 active:scale-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Minus size={14} />
+                        </button>
                         <span className="w-7 text-center font-bold text-gray-900 text-sm">{qty}</span>
-                        <QtyBtn onClick={() => handleQtyChange(qty + 1)}><Plus size={14} /></QtyBtn>
+                        <button
+                          type="button"
+                          onClick={() => handleQtyChange(qty + 1)}
+                          className="w-9 h-9 flex items-center justify-center rounded-lg border-2 border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 active:scale-90 transition-all"
+                        >
+                          <Plus size={14} />
+                        </button>
                       </div>
                     </div>
                   )}
@@ -618,7 +668,7 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
               )}
 
               {/* Bulk Discounts */}
-              {!noVariants && hasBulkDiscount && (
+              {hasBulkDiscount && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                   <h3 className="font-bold text-gray-900 text-base mb-4 flex items-center gap-2">
                     <Tag size={17} className="text-blue-600" />
