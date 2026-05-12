@@ -1,0 +1,802 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { ImCross } from "react-icons/im";
+import QuillEditor from "../../components/QuillEditor";
+import { config } from "../../../config";
+
+const UpdateProduct = ({
+  formData,
+  setFormData,
+  handleSubmit,
+  onCancel,
+  categories,
+  showHomepageFields,
+  setShowHomepageFields,
+  showBulkDiscounts,
+  setShowBulkDiscounts,
+  showBumps,
+  setShowBumps,
+  handleImageChange,
+  handleColorImageChange,
+  handleBumpImageChange,
+  showSingleProductSizes,
+  setShowSingleProductSizes,
+  removeImage
+}) => {
+  const [addOffer, setAddOffer] = useState(!!formData.discount_price);
+  const [addColors, setAddColors] = useState(formData.colors.length > 0 ? true : false);
+  const [error, setError] = useState(null);
+
+  const imageUrl = config.imageUrl;
+
+
+  // ইমেজ URL তৈরি করার helper function
+  const getImageUrl = (image) => {
+    if (!image) return null;
+    
+    // যদি File object হয়
+    if (image instanceof File) {
+      return URL.createObjectURL(image);
+    }
+    
+    // যদি existing ইমেজ object হয় (backend থেকে আসা)
+    if (typeof image === 'object' && image.image) {
+      return imageUrl + '/' + image.image;
+    }
+    
+    // যদি existing ইমেজ string হয়
+    if (typeof image === 'string') {
+      return imageUrl + '/' + image;
+    }
+    
+    // অন্য কোন type হলে null return করুন
+    return null;
+  };
+
+  // Memory cleanup এর জন্য
+  useEffect(() => {
+    return () => {
+      // Component unmount হলে সব Object URLs cleanup করুন
+      formData.images.forEach(image => {
+        const url = getImageUrl(image);
+        if (url && image instanceof File) {
+          URL.revokeObjectURL(url);
+        }
+      });
+      
+      formData.colors.forEach(color => {
+        if (color.image) {
+          const url = getImageUrl(color.image);
+          if (url && color.image instanceof File) {
+            URL.revokeObjectURL(url);
+          }
+        }
+      });
+      
+      formData.bumps.forEach(bump => {
+        if (bump.image) {
+          const url = getImageUrl(bump.image);
+          if (url && bump.image instanceof File) {
+            URL.revokeObjectURL(url);
+          }
+        }
+      });
+    };
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleHomepageChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      homepage: {
+        ...prev.homepage,
+        [name]: value
+      }
+    }));
+  };
+
+  const handleQuillChange = (value) => {
+    setFormData((prev) => ({
+      ...prev,
+      homepage: {
+        ...prev.homepage,
+        "description": value
+      }
+    }));
+  };
+
+  const handleColorChange = (index, e) => {
+    const newColors = [...formData.colors];
+    newColors[index].color = e.target.value;
+    setFormData(prev => ({ ...prev, colors: newColors }));
+  };
+
+  const handleBulkDiscountChange = (index, e) => {
+    const { name, value } = e.target;
+    const bulk_discounts = [...formData.bulk_discounts];
+    bulk_discounts[index][name] = value;
+    setFormData(prev => ({ ...prev, bulk_discounts }));
+  };
+
+  const addBulkDiscount = () => {
+    setFormData(prev => ({
+      ...prev,
+      bulk_discounts: [...(prev.bulk_discounts || []), { title: "", offer_quantity: "", discount_percentage: "" }]
+    }));
+  };
+
+  const removeBulkDiscount = (index) => {
+    const bulk_discounts = [...formData.bulk_discounts];
+    bulk_discounts.splice(index, 1);
+    setFormData(prev => ({ ...prev, bulk_discounts }));
+  };
+
+  const handleSizeChange = (colorIndex, sizeIndex, e) => {
+    const newColors = [...formData.colors];
+    newColors[colorIndex].sizes[sizeIndex].size = e.target.value;
+    setFormData(prev => ({ ...prev, colors: newColors }));
+  };
+
+  const addColor = () => {
+    setFormData(prev => ({
+      ...prev,
+      colors: [...prev.colors, { color: "", image: null, sizes: [{ size: "" }] }]
+    }));
+  };
+
+  const removeColor = (colorIndex) => {
+    const newColors = formData.colors.filter((_, index) => index !== colorIndex);
+    setFormData(prev => ({ ...prev, colors: newColors }));
+  };
+
+  const addSize = (colorIndex) => {
+    const newColors = [...formData.colors];
+    newColors[colorIndex].sizes.push({ size: "" });
+    setFormData(prev => ({ ...prev, colors: newColors }));
+  };
+
+  const removeSize = (colorIndex, sizeIndex) => {
+    const newColors = [...formData.colors];
+    newColors[colorIndex].sizes = newColors[colorIndex].sizes.filter(
+      (_, index) => index !== sizeIndex
+    );
+    setFormData(prev => ({ ...prev, colors: newColors }));
+  };
+
+  const handleCheckedColor = () => {
+    setAddColors(!addColors);
+    setFormData(prev => ({ ...prev, clothing: !addColors }));
+  };
+
+  const handleSingleSizeChange = (index, e) => {
+    const { value } = e.target;
+    const singleProductSizes = [...formData.singleProductSizes];
+    singleProductSizes[index] = {
+      ...singleProductSizes[index],
+      size: value
+    };
+    setFormData(prev => ({ ...prev, singleProductSizes }));
+  };
+
+  // Add new single product size
+  const addSingleSize = () => {
+    setFormData(prev => ({
+      ...prev,
+      singleProductSizes: [
+        ...prev.singleProductSizes,
+        { id: null, size: "" }
+      ]
+    }));
+  };
+
+  // Remove single product size
+  const removeSingleSize = (index) => {
+    const singleProductSizes = [...formData.singleProductSizes];
+    singleProductSizes.splice(index, 1);
+    setFormData(prev => ({ ...prev, singleProductSizes }));
+  };
+
+  // Bump handlers
+  const handleBumpChange = (index, e) => {
+    const { name, value } = e.target;
+    const bumps = [...formData.bumps];
+    bumps[index][name] = value;
+    setFormData(prev => ({ ...prev, bumps }));
+  };
+
+  const addBump = () => {
+    setFormData(prev => ({
+      ...prev,
+      bumps: [...(prev.bumps || []), { title: "", bump_price: "", image: null, description: "" }]
+    }));
+  };
+
+  const removeBump = (index) => {
+    const bumps = [...formData.bumps];
+    bumps.splice(index, 1);
+    setFormData(prev => ({ ...prev, bumps }));
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-700 mb-1">Product Name*</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-700 mb-1">Slug*</label>
+              <input
+                type="text"
+                name="slug"
+                value={formData.slug}
+                onChange={handleChange}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-700 mb-1">Category*</label>
+              <select
+                multiple
+                value={formData.category_id || []}
+                onChange={(e) => {
+                  const values = Array.from(
+                    e.target.selectedOptions,
+                    option => option.value
+                  );
+
+                  setFormData(prev => ({
+                    ...prev,
+                    category_id: values
+                  }));
+                }}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+
+              <p className="text-sm text-gray-500 mt-1">
+              Hold CTRL (Windows) / CMD (Mac) to select multiple categories
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-gray-700 mb-1">Price*</label>
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="offer"
+              checked={addOffer}
+              onChange={() => setAddOffer(!addOffer)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="offer" className="ml-2 block text-gray-700">
+              Add Discount Offer
+            </label>
+          </div>
+
+          {addOffer && (
+            <div>
+              <label className="block text-gray-700 mb-1">Discount Price</label>
+              <input
+                type="number"
+                name="discount_price"
+                value={formData.discount_price}
+                onChange={handleChange}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                min="0"
+                step="0.01"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="clothing"
+                checked={formData.clothing}
+                onChange={(e) => setFormData(prev => ({ ...prev, clothing: e.target.checked }))}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="clothing" className="ml-2 block text-gray-700">
+                Clothing Item
+              </label>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="addColors"
+                checked={addColors}
+                onChange={handleCheckedColor}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="addColors" className="ml-2 block text-gray-700">
+                Add Colors and Sizes
+              </label>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="showHomepage"
+                checked={showHomepageFields}
+                onChange={() => setShowHomepageFields(!showHomepageFields)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="showHomepage" className="ml-2 block text-gray-700">
+                Add Sales Letter
+              </label>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="showBulkDiscounts"
+                checked={showBulkDiscounts}
+                onChange={() => setShowBulkDiscounts(!showBulkDiscounts)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="showBulkDiscounts" className="ml-2 block text-gray-700">
+                Bulk Discounts
+              </label>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="showBumps"
+                checked={showBumps}
+                onChange={() => setShowBumps(!showBumps)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="showBumps" className="ml-2 block text-gray-700">
+                Add Bump Offers
+              </label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="showSingleProductSizes"
+                checked={showSingleProductSizes}
+                onChange={() => setShowSingleProductSizes(!showSingleProductSizes )}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="showSingleProductSizes" className="ml-2 block text-gray-700">
+                Single Product Sizes
+              </label>
+            </div>
+          </div>
+          
+          {showHomepageFields && (
+            <div className="border p-4 rounded-lg space-y-4">
+              <h3 className="text-lg font-medium">Add Content</h3>
+              <div>
+                <label className="block text-gray-700 mb-1">Headline</label>
+                <input
+                  type="text"
+                  name="headline"
+                  value={formData.homepage.headline}
+                  onChange={handleHomepageChange}
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter headline"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Paragraph</label>
+                <textarea
+                  name="paragraph"
+                  value={formData.homepage.paragraph}
+                  onChange={handleHomepageChange}
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter paragraph"
+                  rows="3"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Description</label>
+                <QuillEditor
+                    value={formData.homepage.description || ""}
+                    onChange={handleQuillChange}
+                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter description"
+                    style={{ height: "200px" }}
+                />
+              </div>
+            </div>
+          )}
+
+          {showBulkDiscounts && (
+            <div className="border p-4 rounded-lg space-y-4">
+              <h3 className="text-lg font-medium">Bulk Discounts</h3>
+              {(formData.bulk_discounts || []).map((discount, index) => (
+                <div key={index} className="border p-3 rounded space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-gray-700 mb-1">Title*</label>
+                      <input
+                        type="text"
+                        name="title"
+                        value={discount.title}
+                        onChange={(e) => handleBulkDiscountChange(index, e)}
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        placeholder="e.g., Buy 3 Get 10% Off"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 mb-1">Offer Quantity*</label>
+                      <input
+                        type="number"
+                        name="offer_quantity"
+                        value={discount.offer_quantity}
+                        onChange={(e) => handleBulkDiscountChange(index, e)}
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        placeholder="e.g., 3"
+                        min="1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 mb-1">Discount Percentage*</label>
+                      <input
+                        type="number"
+                        name="discount_percentage"
+                        value={discount.discount_percentage}
+                        onChange={(e) => handleBulkDiscountChange(index, e)}
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        placeholder="e.g., 10"
+                        min="1"
+                        max="100"
+                      />
+                    </div>
+                  </div>
+                  {(formData.bulk_discounts || []).length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeBulkDiscount(index)}
+                      className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                    >
+                      Remove Discount
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addBulkDiscount}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Add Another Discount
+              </button>
+            </div>
+          )}
+
+          {!addColors && (
+            <div className="border p-4 rounded-lg">
+              <label className="block text-gray-700 mb-2">Product Images</label>
+              
+              {/* Existing Images Display */}
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                {formData.images.map((image, index) => {
+                  const imageUrlToShow = getImageUrl(image);
+                  
+                  return (
+                    <div key={index} className="relative">
+                      {imageUrlToShow ? (
+                        <img 
+                          src={imageUrlToShow}
+                          alt={`Product ${index + 1}`}
+                          className="w-20 h-20 object-cover rounded border"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-20 h-20 bg-gray-200 rounded border flex items-center justify-center text-xs text-gray-500">
+                          Invalid Image
+                        </div>
+                      )}
+                      
+                      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 text-center">
+                        {image instanceof File ? 'New' : 'Existing'}
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <input
+                type="file"
+                multiple
+                onChange={handleImageChange}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                accept="image/*"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Select new images to add to existing ones (WebP format, max 0.5MB)
+              </p>
+            </div>
+          )}
+
+          {addColors && (
+            <div className="space-y-4">
+              {formData.colors.map((color, colorIndex) => (
+                <div key={colorIndex} className="border p-4 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-gray-700">Color*</label>
+                    <button
+                      type="button"
+                      onClick={() => removeColor(colorIndex)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <ImCross className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={color.color}
+                    onChange={(e) => handleColorChange(colorIndex, e)}
+                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+
+                  <label className="block text-gray-700 mt-2 mb-1">Color Image*</label>
+                  
+                  {/* Color Image Display */}
+                  {color.image && (
+                    <div className="mb-2">
+                      <img 
+                        src={getImageUrl(color.image)}
+                        alt={`Color ${color.color}`}
+                        className="w-20 h-20 object-cover rounded border"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  <input
+                    type="file"
+                    onChange={(e) => handleColorImageChange(colorIndex, e)}
+                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    accept="image/*"
+                  />
+
+                  <label className="block text-gray-700 mt-2 mb-1">Sizes</label>
+                  {color.sizes.map((size, sizeIndex) => (
+                    <div key={sizeIndex} className="flex items-center space-x-2 mb-2">
+                      <input
+                        type="text"
+                        value={size.size}
+                        onChange={(e) => handleSizeChange(colorIndex, sizeIndex, e)}
+                        className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter size"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSize(colorIndex, sizeIndex)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <ImCross className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => addSize(colorIndex)}
+                    className="mt-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+                  >
+                    Add Size
+                  </button>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={addColor}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Add Another Color
+              </button>
+            </div>
+          )}
+
+          {showBumps && (
+            <div className="border p-4 rounded-lg space-y-4">
+              <h3 className="text-lg font-medium">Bump Offers</h3>
+              {(formData.bumps || []).map((bump, index) => (
+                <div key={index} className="border p-3 rounded space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-gray-700 mb-1">Bump Price*</label>
+                      <input
+                        type="text"
+                        name="bump_price"
+                        value={bump.bump_price || ""}
+                        onChange={(e) => handleBumpChange(index, e)}
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        placeholder="Bump price"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 mb-1">Title*</label>
+                      <input
+                        type="text"
+                        name="title"
+                        value={bump.title || ""}
+                        onChange={(e) => handleBumpChange(index, e)}
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                        placeholder="Bump offer title"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 mb-1">Image</label>
+                      
+                      {/* Bump Image Display */}
+                      {bump.image && (
+                        <div className="mb-2">
+                          <img 
+                            src={getImageUrl(bump.image)}
+                            alt={`Bump ${bump.title}`}
+                            className="w-20 h-20 object-cover rounded border"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                      
+                      <input
+                        type="file"
+                        onChange={(e) => handleBumpImageChange(index, e)}
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        accept="image/*"
+                      />
+                      {bump.image && !(bump.image instanceof File) && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          Current image: {typeof bump.image === 'string' ? bump.image : 'Uploaded image'}
+                        </p>
+                      )}
+                      <p className="text-sm text-gray-500 mt-1">Image will be compressed to WebP format (max 0.5MB)</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 mb-1">Description*</label>
+                    <textarea
+                      name="description"
+                      value={bump.description || ""}
+                      onChange={(e) => handleBumpChange(index, e)}
+                      className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Bump offer description"
+                      rows="3"
+                      required
+                    />
+                  </div>
+                  {(formData.bumps || []).length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeBump(index)}
+                      className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                    >
+                      Remove Bump
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addBump}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Add Another Bump
+              </button>
+            </div>
+          )}
+
+          {showSingleProductSizes && (
+            <div className="border p-4 rounded-lg space-y-4">
+              <h3 className="text-lg font-medium">Single Product Sizes</h3>
+              {(formData.singleProductSizes || []).map((size, index) => (
+                <div key={index} className="border p-3 rounded space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      name="size"
+                      value={size.size || ""}
+                      onChange={(e) => handleSingleSizeChange(index, e)}
+                      className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                      placeholder="Enter size (e.g., S, M, L)"
+                    />
+                    {(formData.singleProductSizes || []).length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeSingleSize(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <ImCross className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addSingleSize}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Add Another Size
+              </button>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Update Product
+            </button>
+          </div>
+    </form>
+  );
+};
+
+export default UpdateProduct;
