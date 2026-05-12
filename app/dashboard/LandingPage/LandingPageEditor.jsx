@@ -1289,12 +1289,12 @@ const LandingPageEditor = ({ pageId }) => {
         } else if (data.html) {
           // Add checkout_type data attribute to body if present in stored data
           let html = data.html;
-          if (data.checkout_type) {
+          if (data.checkout_display_mode) {
             // Check if body already has data-checkout-type attribute
             const hasCheckoutAttr = html.includes('data-checkout-type');
             if (!hasCheckoutAttr) {
               // Add to body tag
-              html = html.replace(/<body([^>]*)>/i, `<body$1 data-checkout-type="${data.checkout_type}">`);
+              html = html.replace(/<body([^>]*)>/i, `<body$1 data-checkout-type="${data.checkout_display_mode}">`);
             }
           }
           editor.setComponents(html);
@@ -1325,13 +1325,13 @@ const LandingPageEditor = ({ pageId }) => {
         wrapLooseHeroImages();
         const html = sanitizeSavedHtml(editor.getHtml());
 
-        // Extract checkout_type from body data attribute
-        let checkoutType = 'scroll'; // default
+        // Extract checkout_display_mode from body data attribute
+        let checkoutDisplayMode = 'scroll'; // default
         const bodyMatch = html.match(/<body([^>]*)>/i);
         if (bodyMatch) {
           const attrMatch = bodyMatch[1].match(/data-checkout-type=["']([^"']+)["']/i);
           if (attrMatch) {
-            checkoutType = attrMatch[1];
+            checkoutDisplayMode = attrMatch[1];
           }
         }
 
@@ -1341,7 +1341,7 @@ const LandingPageEditor = ({ pageId }) => {
           components: null,
           styles: null,
           assets: JSON.stringify(editor.AssetManager.getAll().map((asset) => asset.toJSON())),
-          checkout_type: checkoutType,
+          checkout_display_mode: checkoutDisplayMode,
         };
 
         const response = await axios.post(`${apiUrl}/landing-pages/save/${id}`, payload);

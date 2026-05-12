@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
-import CheckoutModal from '@/components/Landing/CheckoutModal';
 import CheckoutSection from '@/components/Landing/CheckoutSection';
+import CheckoutModal from '@/components/Landing/CheckoutModal';
 
-export default function OfferViewer({ html, css, name, slug, checkoutType = 'scroll' }) {
+export default function OfferViewer({ html, css, name, checkoutType = 'scroll' }) {
   const [mounted, setMounted] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
@@ -12,7 +12,6 @@ export default function OfferViewer({ html, css, name, slug, checkoutType = 'scr
     setMounted(true);
   }, []);
 
-  // Toggle modal
   const openModal = useCallback(() => {
     setShowModal(true);
   }, []);
@@ -88,9 +87,9 @@ export default function OfferViewer({ html, css, name, slug, checkoutType = 'scr
         </div>
       )}
 
-      {/* Popup mode: Checkout Modal with same page */}
+      {/* Popup mode: Checkout Modal */}
       {checkoutType === 'popup' && (
-        <CheckoutModal open={showModal} onClose={closeModal} slug={slug} />
+        <CheckoutModal open={showModal} onClose={closeModal} />
       )}
     </div>
   );

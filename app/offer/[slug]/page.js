@@ -60,7 +60,7 @@ export default async function OfferPage({ params }) {
     const bodyMatch = html.match(/<body([^>]*)>/i);
     if (bodyMatch) {
       if (!bodyMatch[1].includes('data-checkout-type')) {
-        const checkoutType = page.checkout_type || 'scroll';
+        const checkoutType = page.checkout_display_mode || 'scroll';
         html = html.replace(/<body([^>]*)>/i, `<body$1 data-checkout-type="${checkoutType}">`);
       }
     }
@@ -71,7 +71,7 @@ export default async function OfferPage({ params }) {
         css={page.css}
         name={page.name}
         slug={page.slug}
-        checkoutType={page.checkout_type || 'scroll'}
+        checkoutType={page.checkout_display_mode || 'scroll'}
       />
     );
   } catch (error) {

@@ -21,7 +21,7 @@ const ModalHeader = ({ onClose }) => (
   </div>
 );
 
-const CheckoutModal = ({ open, onClose, slug }) => {
+const CheckoutModal = ({ open, onClose }) => {
   const savedScrollY = useRef(0);
 
   // ESC key
@@ -88,20 +88,7 @@ const CheckoutModal = ({ open, onClose, slug }) => {
                 className="flex-1 overflow-y-auto overscroll-contain"
                 style={{ WebkitOverflowScrolling: 'touch', height: 'calc(92dvh - 120px)' }}
               >
-                {slug ? (
-                  <iframe
-                    src={`/offer/${slug}`}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      border: 'none',
-                      background: 'white',
-                    }}
-                    title="Checkout"
-                  />
-                ) : (
-                  <CheckoutSection isModal noVariants onClose={onClose} />
-                )}
+                <CheckoutSection isModal noVariants onClose={onClose} />
               </div>
             </div>
           </motion.div>
@@ -127,20 +114,7 @@ const CheckoutModal = ({ open, onClose, slug }) => {
                 className="flex-1 overflow-y-auto overscroll-contain"
                 style={{ WebkitOverflowScrolling: 'touch', height: 'calc(90dvh - 60px)' }}
               >
-                {slug ? (
-                  <iframe
-                    src={`/offer/${slug}`}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      border: 'none',
-                      background: 'white',
-                    }}
-                    title="Checkout"
-                  />
-                ) : (
-                  <CheckoutSection isModal noVariants onClose={onClose} />
-                )}
+                <CheckoutSection isModal noVariants onClose={onClose} />
               </div>
             </div>
           </motion.div>
