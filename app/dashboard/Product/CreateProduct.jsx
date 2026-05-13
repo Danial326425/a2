@@ -25,26 +25,32 @@ const CreateProduct = ({ onProductCreated }) => {
     bumps: [{ bump_price: "", title: "", image: null, description: "" }],
     homepage: { headline: "", paragraph: "", description: "" },
     singleProductSizes: [{ size: "" }],
+    has_upsell: false,
+    upsell_product_id: "",
   });
 
-  const [categories, setCategories] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
-  const [addColors, setAddColors] = useState(false);
-  const [addOffer, setAddOffer] = useState(false);
-  const [showHomepage, setShowHomepage] = useState(false);
+  const [categories, setCategories]         = useState([]);
+  const [upsellProducts, setUpsellProducts] = useState([]);
+  const [imagePreviews, setImagePreviews]   = useState([]);
+  const [addColors, setAddColors]           = useState(false);
+  const [addOffer, setAddOffer]             = useState(false);
+  const [showHomepage, setShowHomepage]     = useState(false);
   const [showBulkDiscounts, setShowBulkDiscounts] = useState(false);
-  const [showBumps, setShowBumps] = useState(false);
+  const [showBumps, setShowBumps]           = useState(false);
   const [showSingleSizes, setShowSingleSizes] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [compressing, setCompressing] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [showUpsell, setShowUpsell]         = useState(false);
+  const [loading, setLoading]               = useState(true);
+  const [submitting, setSubmitting]         = useState(false);
+  const [compressing, setCompressing]       = useState(false);
+  const [error, setError]                   = useState(null);
+  const [success, setSuccess]               = useState(null);
 
   useEffect(() => {
-    axios.get(`${apiUrl}/category`)
-      .then(r => setCategories(r.data.categories || []))
-      .catch(() => setError("Failed to load categories"))
+    Promise.all([
+      axios.get(`${apiUrl}/category`).then(r => setCategories(r.data.categories || [])),
+      axios.get(`${apiUrl}/upsell-products`).then(r => setUpsellProducts(r.data.upsell_products || [])),
+    ])
+      .catch(() => setError("Failed to load data"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -163,6 +169,10 @@ const CreateProduct = ({ onProductCreated }) => {
     data.append("discount_price", formData.discount_price || "");
     formData.category_id.forEach((id, i) => data.append(`categories[${i}]`, id));
     data.append("clothing", formData.clothing ? "1" : "0");
+    data.append("has_upsell", showUpsell && formData.upsell_product_id ? "1" : "0");
+    if (showUpsell && formData.upsell_product_id) {
+      data.append("upsell_product_id", formData.upsell_product_id);
+    }
 
     if (showHomepage) {
       data.append("homepage[headline]", formData.homepage.headline);
@@ -280,6 +290,7 @@ const CreateProduct = ({ onProductCreated }) => {
               { state: showHomepage, set: setShowHomepage, label: "Sales Letter" },
               { state: showBulkDiscounts, set: setShowBulkDiscounts, label: "Bulk Discounts" },
               { state: showBumps, set: setShowBumps, label: "Bump Offers" },
+              { state: showUpsell, set: setShowUpsell, label: "Upsell Offer" },
             ].map(({ state, set, label }) => (
               <button
                 key={label}
@@ -469,6 +480,36 @@ const CreateProduct = ({ onProductCreated }) => {
                   </FormField>
                 </RepeatableItem>
               ))}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* ── Upsell Offer ─────────────────────────────────── */}
+        {showUpsell && (
+          <SectionCard>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Upsell Offer (Post-Order)</p>
+            <div className="space-y-4">
+              <p className="text-xs text-gray-500">
+                অর্ডার সম্পন্ন হলে কাস্টমারকে এই আপসেল পেজে নিয়ে যাওয়া হবে।
+              </p>
+              <FormField label="Upsell Product" required>
+                <Select
+                  value={formData.upsell_product_id}
+                  onChange={(e) => setFormData(p => ({ ...p, upsell_product_id: e.target.value }))}
+                >
+                  <option value="">-- আপসেল পণ্য বেছে নিন --</option>
+                  {upsellProducts.filter(u => u.is_active).map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} (৳{Number(u.offer_price).toLocaleString()})
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+              {upsellProducts.length === 0 && (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  কোনো সক্রিয় আপসেল পণ্য নেই। আগে Dashboard → Upsell থেকে পণ্য তৈরি করুন।
+                </p>
+              )}
             </div>
           </SectionCard>
         )}

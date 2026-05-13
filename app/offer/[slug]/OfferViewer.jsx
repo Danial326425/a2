@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import CheckoutSection from '@/components/Landing/CheckoutSection';
 import CheckoutModal from '@/components/Landing/CheckoutModal';
 
-export default function OfferViewer({ html, css, name, checkoutType = 'scroll' }) {
+export default function OfferViewer({ html, css, checkoutType = 'scroll' }) {
   const [mounted, setMounted] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
@@ -25,7 +25,6 @@ export default function OfferViewer({ html, css, name, checkoutType = 'scroll' }
     if (!mounted) return;
 
     const handleClick = (e) => {
-      console.log('checkoutType:', checkoutType);
       const button = e.target.closest('button, a');
       if (!button) return;
 

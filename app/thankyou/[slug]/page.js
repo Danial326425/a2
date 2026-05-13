@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import axios from 'axios';
 import { useParams } from 'next/navigation';
+import Image from 'next/image';
 import { trackBrowserEvent, sendCAPIEvent, updateAdvancedMatching, generateEventId, formatPhoneForFacebook } from '@/pixel';
-import { FaCheckCircle, FaShoppingBag, FaUserAlt, FaTruck, FaPlusCircle, FaMinusCircle } from 'react-icons/fa';
+import { FaCheckCircle, FaShoppingBag, FaUserAlt, FaTruck, FaPlusCircle, FaMinusCircle, FaGift } from 'react-icons/fa';
 import { HeaderContext } from '@/app/context/HeaderContext';
 import { ProductContext } from '@/app/context/ProductsContext';
 import * as FaIcons from 'react-icons/fa';
@@ -120,8 +121,13 @@ const CustomerInfo = ({ order }) => (
 );
 
 const ProductDetails = ({ order }) => {
-  const hasItems = order.items && order.items.length > 0;
-  const products = hasItems ? order.items : [{ product_name: order.product_name, quantity: order.quantity, color: order.color, size: order.size }];
+  const allItems = order.items && order.items.length > 0 ? order.items : null;
+  const regularItems = allItems
+    ? allItems.filter(item => !item.product_name?.startsWith('[Upsell]'))
+    : null;
+  const products = regularItems && regularItems.length > 0
+    ? regularItems
+    : [{ product_name: order.product_name, quantity: order.quantity, color: order.color, size: order.size }];
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
@@ -160,14 +166,31 @@ const ProductDetails = ({ order }) => {
 };
 
 const PriceSummary = ({ order }) => {
-  const hasItems = order.items && order.items.length > 0;
+  const allItems     = order.items && order.items.length > 0 ? order.items : null;
+  const regularItems = allItems ? allItems.filter(i => !i.product_name?.startsWith('[Upsell]')) : [];
+  const upsellItem   = allItems ? allItems.find(i => i.product_name?.startsWith('[Upsell]')) : null;
+
+  // Fallback when order.items doesn't contain the [Upsell] row
+  // (e.g. orders placed from landing pages that don't send items array)
+  const upsellAccepted = order.upsell_status === 'accepted';
+  const showUpsellLine = !!(upsellItem || (upsellAccepted && (order.upsell_price || order.upsell_product?.offer_price)));
+
+  console.log(order.upsell_product?.offer_price)
+
+  const upsellDisplayName = upsellItem
+    ? upsellItem.product_name.replace('[Upsell] ', '')
+    : (order.upsell_product?.name ?? 'আপসেল পণ্য');
+
+  const upsellDisplayPrice = upsellItem?.price
+    ?? order.upsell_price
+    ?? order.upsell_product?.offer_price;
 
   return (
     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">মূল্য বিবরণী</h3>
       <div className="space-y-3">
-        {hasItems ? (
-          order.items.map((item, index) => (
+        {regularItems.length > 0 ? (
+          regularItems.map((item, index) => (
             <div key={index} className="flex justify-between items-center">
               <span className="text-gray-600">{item.product_name}</span>
               <span className="font-medium">৳{item.price} (x{item.quantity}) = ৳{item.price * item.quantity}</span>
@@ -177,6 +200,16 @@ const PriceSummary = ({ order }) => {
           <div className="flex justify-between">
             <span className="text-gray-600">পণ্য মূল্য:</span>
             <span className="font-medium">৳{order.product_price}</span>
+          </div>
+        )}
+
+        {showUpsellLine && (
+          <div className="flex justify-between items-center bg-red-50 border border-red-100 rounded-md px-3 py-2">
+            <div className="flex items-center gap-1.5 text-red-700">
+              <FaGift className="text-xs flex-shrink-0" />
+              <span className="text-sm font-medium">{upsellDisplayName}</span>
+            </div>
+            <span className="font-bold text-red-600 text-sm">+৳{upsellDisplayPrice}</span>
           </div>
         )}
 
@@ -228,8 +261,51 @@ const PriceSummary = ({ order }) => {
         )}
         <div className="border-t border-gray-200 pt-3 mt-3">
           <div className="flex justify-between font-bold text-lg">
-            <span>মোট পরিশোধ:</span>
+            <span>{upsellAccepted ? 'সর্বমোট পরিশোধ:' : 'মোট পরিশোধ:'}</span>
             <span className="text-blue-600">৳{order.total}</span>
+          </div>
+          {upsellAccepted && (
+            <p className="text-xs text-red-500 text-right mt-1 font-medium">
+              (আপসেল পণ্য অন্তর্ভুক্ত)
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const UpsellOrderBadge = ({ order }) => {
+  const upsell = order.upsell_product;
+  if (!upsell || order.upsell_status !== 'accepted') return null;
+
+  return (
+    <div className="mt-6 bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <FaGift className="text-red-500 text-lg" />
+        <h3 className="font-bold text-red-700 text-sm">বিশেষ আপসেল পণ্য যোগ হয়েছে!</h3>
+      </div>
+      <div className="flex items-center gap-4">
+        {upsell.image && (
+          <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-red-200 flex-shrink-0 bg-white">
+            <Image
+              src={`/api/storage/${upsell.image}`}
+              alt={upsell.name}
+              fill
+              className="object-contain p-1"
+              sizes="64px"
+            />
+          </div>
+        )}
+        <div className="flex-1">
+          <p className="font-bold text-gray-800 text-sm">{upsell.name}</p>
+          {upsell.description && (
+            <p className="text-gray-500 text-xs mt-0.5 line-clamp-2">{upsell.description}</p>
+          )}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-gray-400 line-through text-xs">৳{Number(upsell.original_price).toLocaleString()}</span>
+            <span className="text-red-600 font-black text-sm">৳{Number(order.upsell_price || upsell.offer_price).toLocaleString()}</span>
+            <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-semibold">যোগ হয়েছে ✓</span>
           </div>
         </div>
       </div>
@@ -337,11 +413,13 @@ export default function ThankYou() {
   const buildContentsForPixel = (order) => {
     let contents = [];
     if (order?.items?.length > 0) {
-      contents = order.items.map(item => ({
-        id: item.product_id,
-        quantity: item.quantity,
-        item_price: Number(item.price)
-      }));
+      contents = order.items
+        .filter(item => !item.product_name?.startsWith('[Upsell]'))
+        .map(item => ({
+          id: item.product_id,
+          quantity: item.quantity,
+          item_price: Number(item.price)
+        }));
     } else {
       contents.push({
         id: order?.product_id,
@@ -354,18 +432,31 @@ export default function ThankYou() {
         contents.push({ id: `bump_${bump.bump_id}`, quantity: 1, item_price: Number(bump.price) });
       });
     }
+    if (order?.upsell_status === 'accepted' && order?.upsell_product_id) {
+      const upsellPrice = Number(order?.upsell_price || order?.upsell_product?.offer_price || 0);
+      contents.push({
+        id: `upsell_${order.upsell_product_id}`,
+        quantity: 1,
+        item_price: Math.round(upsellPrice),
+      });
+    }
     return contents;
   };
 
   const buildContentIds = (order) => {
     let ids = [];
     if (order?.items?.length > 0) {
-      ids = order.items.map(item => item.product_id);
+      ids = order.items
+        .filter(item => !item.product_name?.startsWith('[Upsell]'))
+        .map(item => item.product_id);
     } else if (order?.product_id) {
       ids.push(order.product_id);
     }
     if (order?.order_bumps?.length > 0) {
       order.order_bumps.forEach(bump => ids.push(`bump_${bump.bump_id}`));
+    }
+    if (order?.upsell_status === 'accepted' && order?.upsell_product_id) {
+      ids.push(`upsell_${order.upsell_product_id}`);
     }
     return ids;
   };
@@ -524,6 +615,7 @@ export default function ThankYou() {
                 </div>
                 <PriceSummary order={orderDetails} />
               </div>
+              <UpsellOrderBadge order={orderDetails} />
               <DeliveryInfo />
             </div>
           </div>

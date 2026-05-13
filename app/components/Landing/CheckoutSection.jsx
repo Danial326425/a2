@@ -356,6 +356,7 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
 
   const orderData = useMemo(() => ({
     order_id:         orderId,
+    product_id:       data?.product?.id,
     product_name:     data?.product?.name,
     customer_name:    name,
     phone_number:     phone,
@@ -413,7 +414,7 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
       });
       if (res.ok) {
         track('order', slug);
-        window.location.href = `/thankyou/${orderId}`;
+        window.location.href = `/upsell/${orderId}`;
         return;
       }
     } catch (err) {
@@ -669,46 +670,76 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
 
               {/* Bulk Discounts */}
               {hasBulkDiscount && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                  <h3 className="font-bold text-gray-900 text-base mb-4 flex items-center gap-2">
-                    <Tag size={17} className="text-blue-600" />
-                    একাধিক পণ্যে বিশেষ ছাড়
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {data.product.bulk_discounts.map(d => {
-                      const sel = selectedBulkDiscount?.id === d.id;
-                      return (
-                        <button
-                          key={d.id}
-                          type="button"
-                          onClick={() => handleBulkDiscountSelect(d)}
-                          className={cls(
-                            "p-3.5 rounded-xl border-2 text-left transition-all duration-200",
-                            sel
-                              ? "border-blue-500 bg-blue-50 shadow-sm"
-                              : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/40"
-                          )}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={cls("text-sm font-bold leading-snug", sel ? "text-blue-800" : "text-gray-800")}>
-                              {d.title}
-                            </p>
-                            <span className={cls("flex-shrink-0 text-xs font-black px-2 py-0.5 rounded-full", sel ? "bg-blue-600 text-white" : "bg-green-100 text-green-700")}>
-                              {d.discount_percentage}% ছাড়
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
-                            <Package size={11} /> পরিমাণ: {d.offer_quantity} টি
-                            {sel && qty !== d.offer_quantity && (
-                              <span className="text-red-500 ml-2">({d.offer_quantity} টি লাগবে)</span>
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-sm border border-blue-100 p-5 overflow-hidden relative">
+                  {/* Decorative background */}
+                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-200 rounded-full opacity-20"></div>
+                  <div className="absolute -bottom-5 -left-5 w-20 h-20 bg-indigo-200 rounded-full opacity-20"></div>
+
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                        <Tag size={18} className="text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-base">বাল্ক ডিসকাউন্ট</h3>
+                        <p className="text-xs text-blue-600">একসাথে বেশি কিনুন, বেশি সাশ্রয় করুন</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {data.product.bulk_discounts.map(d => {
+                        const sel = selectedBulkDiscount?.id === d.id;
+                        const savings = Math.round((price * d.offer_quantity * d.discount_percentage) / 100);
+                        return (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() => handleBulkDiscountSelect(d)}
+                            className={cls(
+                              "w-full p-4 rounded-xl border-2 text-left transition-all duration-300 relative overflow-hidden",
+                              sel
+                                ? "border-blue-500 bg-white shadow-lg transform scale-[1.02]"
+                                : "border-blue-100 bg-white/80 hover:border-blue-300 hover:bg-white hover:shadow-md"
                             )}
-                            {sel && qty === d.offer_quantity && (
-                              <span className="text-blue-600 ml-2 font-bold">✓ সক্রিয়</span>
+                          >
+                            {/* Selected indicator */}
+                            {sel && (
+                              <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-bl-lg font-bold">
+                                সিলেক্টেড
+                              </div>
                             )}
-                          </p>
-                        </button>
-                      );
-                    })}
+
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <p className={cls("text-base font-bold leading-snug", sel ? "text-blue-700" : "text-gray-800")}>
+                                  {d.title}
+                                </p>
+                                <div className="flex items-center gap-3 mt-2">
+                                  <span className="inline-flex items-center gap-1 text-sm text-gray-600">
+                                    <Package size={14} className="text-gray-400" />
+                                    {d.offer_quantity} টি
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 text-sm text-green-600 font-medium">
+                                    <Gift size={14} />
+                                    সাশ্রয় ৳{savings}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                <span className={cls("text-lg font-black px-3 py-1 rounded-lg", sel ? "bg-blue-500 text-white" : "bg-green-100 text-green-700")}>
+                                  {d.discount_percentage}% ছাড়
+                                </span>
+                                {sel && qty === d.offer_quantity && (
+                                  <span className="text-xs text-blue-600 font-bold flex items-center gap-1">
+                                    <CheckCircle2 size={12} /> সক্রিয়
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
@@ -726,108 +757,174 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
                 />
 
                 {/* Price Breakdown */}
-                <div className="border-t border-gray-100 pt-4 mt-2 space-y-2.5">
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>পণ্যের মূল্য{!noVariants && ` (${qty}টি)`}</span>
+                <div className="border-t border-gray-100 pt-4 mt-2 space-y-3">
+                  {/* Product price */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">
+                      পণ্যের মূল্য {!noVariants && qty > 1 && <span className="text-gray-400">({qty}টি)</span>}
+                    </span>
                     <span className="font-semibold text-gray-800">৳{Math.round(price * qty)}</span>
                   </div>
 
+                  {/* Bulk discount */}
                   {bulkDiscountAmount > 0 && (
-                    <div className="flex justify-between text-sm text-green-600">
-                      <span className="flex items-center gap-1"><Tag size={12} />{selectedBulkDiscount.title}</span>
-                      <span className="font-semibold">− ৳{bulkDiscountAmount}</span>
+                    <div className="flex justify-between items-center bg-green-50 -mx-2 px-2 py-2 rounded-lg border border-green-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                          <CheckCircle2 size={12} className="text-white" />
+                        </div>
+                        <span className="text-sm text-green-700 font-medium">{selectedBulkDiscount.title}</span>
+                      </div>
+                      <span className="text-green-600 font-bold">− ৳{bulkDiscountAmount}</span>
                     </div>
                   )}
 
+                  {/* Bump offers */}
                   {bumps.filter(b => b.selected).map((b, i) => (
-                    <div key={i} className="flex justify-between text-sm text-blue-600">
-                      <span className="flex items-center gap-1"><Gift size={12} />{b.title}</span>
-                      <span className="font-semibold">+ ৳{Math.round(Number(b.bump_price))}</span>
+                    <div key={i} className="flex justify-between items-center bg-amber-50 -mx-2 px-2 py-2 rounded-lg border border-amber-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                          <Gift size={10} className="text-white" />
+                        </div>
+                        <span className="text-sm text-amber-700 font-medium truncate">{b.title}</span>
+                      </div>
+                      <span className="text-amber-600 font-bold whitespace-nowrap">+ ৳{Math.round(Number(b.bump_price))}</span>
                     </div>
                   ))}
 
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span className="flex items-center gap-1"><Truck size={12} />ডেলিভারি চার্জ</span>
+                  {/* Delivery charge */}
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-2 text-sm text-gray-600">
+                      <Truck size={14} className="text-gray-400" />
+                      ডেলিভারি চার্জ
+                    </span>
                     <span className={cls("font-semibold", selectedDeliveryCharge === 0 ? "text-green-600" : "text-gray-800")}>
-                      {selectedDeliveryCharge === 0 ? 'ফ্রি' : `৳${Math.round(selectedDeliveryCharge)}`}
+                      {selectedDeliveryCharge === 0 ? (
+                        <span className="flex items-center gap-1">
+                          <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">ফ্রি</span>
+                        </span>
+                      ) : (
+                        `৳${Math.round(selectedDeliveryCharge)}`
+                      )}
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                    <span className="font-bold text-gray-900 text-base">সর্বমোট</span>
+                  {/* Total */}
+                  <div className="flex justify-between items-center pt-3 border-t-2 border-gray-200 mt-2">
+                    <div>
+                      <span className="font-bold text-gray-900 text-base">সর্বমোট</span>
+                      {(bulkDiscountAmount > 0 || bumps.filter(b => b.selected).length > 0) && (
+                        <p className="text-xs text-gray-400">
+                          (ডিসকাউন্ট প্রয়োগ হয়েছে)
+                        </p>
+                      )}
+                    </div>
                     <div className="text-right">
-                      <span className="font-extrabold text-2xl text-emerald-600">৳{total}</span>
+                      <span className="font-extrabold text-2xl text-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
+                        ৳{total}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 {/* COD notice */}
-                <div className="mt-4 bg-emerald-50 rounded-xl px-4 py-3 flex items-center gap-2.5 border border-emerald-100">
-                  <BadgeCheck size={20} className="text-emerald-600 flex-shrink-0" />
-                  <p className="text-xs text-emerald-800 font-semibold leading-snug">
-                    পণ্য হাতে পেয়ে <strong>৳{total}</strong> পরিশোধ করুন।
-                    কোনো অগ্রিম পেমেন্ট প্রয়োজন নেই।
-                  </p>
+                <div className="mt-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl px-4 py-3 flex items-center gap-3 border border-emerald-100 shadow-sm">
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
+                    <BadgeCheck size={20} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-emerald-800 font-bold">ক্যাশ অন ডেলিভারি</p>
+                    <p className="text-xs text-emerald-600">
+                      পণ্য হাতে পেয়ে <strong>৳{total}</strong> পরিশোধ করুন
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {/* Bump Offers */}
               {hasBumps && (
-                <div className="bg-white rounded-2xl shadow-sm border border-amber-200 p-5">
-                  <h3 className="font-bold text-gray-900 text-base mb-4 flex items-center gap-2">
-                    <Zap size={17} className="text-amber-500" />
-                    <span>বিশেষ অ্যাড-অন অফার</span>
-                    <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">
-                      অতিরিক্ত ডিসকাউন্ট
-                    </span>
-                  </h3>
-                  <div className="space-y-3">
-                    {bumps.map(b => (
-                      <button
-                        key={b.id}
-                        type="button"
-                        onClick={() => handleBumpSelect(b.id)}
-                        className={cls(
-                          "w-full p-3.5 rounded-xl border-2 text-left transition-all duration-200",
-                          b.selected
-                            ? "border-amber-400 bg-amber-50 shadow-sm"
-                            : "border-gray-200 hover:border-amber-300 hover:bg-amber-50/40"
-                        )}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={cls(
-                            "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all",
-                            b.selected ? "bg-amber-500 border-amber-500" : "border-gray-300"
-                          )}>
-                            {b.selected && <CheckCircle2 size={12} className="text-white" strokeWidth={3} />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className={cls("text-sm font-bold leading-snug", b.selected ? "text-amber-800" : "text-gray-800")}>
-                                {b.title}
-                              </p>
-                              <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
-                                +৳{Math.round(b.bump_price)}
-                              </span>
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl shadow-sm border border-amber-200 p-5 overflow-hidden relative">
+                  {/* Decorative background */}
+                  <div className="absolute -top-8 -left-8 w-32 h-32 bg-amber-200 rounded-full opacity-20"></div>
+                  <div className="absolute -bottom-5 -right-5 w-24 h-24 bg-orange-200 rounded-full opacity-20"></div>
+
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                        <Zap size={18} className="text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-900 text-base">বিশেষ অফার</h3>
+                        <p className="text-xs text-amber-600">এক্সক্লুসিভ ডিল</p>
+                      </div>
+                      <span className="bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
+                        অফার
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {bumps.map(b => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => handleBumpSelect(b.id)}
+                          className={cls(
+                            "w-full p-4 rounded-xl border-2 text-left transition-all duration-300 relative overflow-hidden",
+                            b.selected
+                              ? "border-amber-400 bg-white shadow-lg transform scale-[1.02]"
+                              : "border-amber-100 bg-white/80 hover:border-amber-300 hover:bg-white hover:shadow-md"
+                          )}
+                        >
+                          {/* Selected indicator */}
+                          {b.selected && (
+                            <div className="absolute top-0 right-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-0.5 rounded-bl-lg font-bold flex items-center gap-1">
+                              <CheckCircle2 size={10} /> যোগ হয়েছে
                             </div>
-                            {b.image && (
-                              <img
-                                src={`${imageUrl}/${b.image}`}
-                                alt={b.title}
-                                className="w-full h-28 object-cover rounded-lg mt-2 border border-gray-200"
-                              />
-                            )}
-                            {b.description && (
-                              <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{b.description}</p>
-                            )}
+                          )}
+
+                          <div className="flex items-start gap-4">
+                            {/* Checkbox */}
+                            <div className={cls(
+                              "w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all",
+                              b.selected ? "bg-gradient-to-br from-amber-400 to-orange-500 border-amber-400" : "border-gray-300 bg-white"
+                            )}>
+                              {b.selected && <CheckCircle2 size={14} className="text-white" strokeWidth={3} />}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className={cls("text-base font-bold leading-snug", b.selected ? "text-amber-800" : "text-gray-800")}>
+                                  {b.title}
+                                </p>
+                                <span className={cls("text-sm font-bold px-2.5 py-1 rounded-lg whitespace-nowrap flex-shrink-0",
+                                  b.selected ? "bg-amber-500 text-white" : "bg-green-100 text-green-700"
+                                )}>
+                                  +৳{Math.round(b.bump_price)}
+                                </span>
+                              </div>
+
+                              {b.description && (
+                                <p className="text-sm text-gray-500 mt-1.5 leading-relaxed line-clamp-2">{b.description}</p>
+                              )}
+
+                              {b.image && (
+                                <img
+                                  src={`${imageUrl}/${b.image}`}
+                                  alt={b.title}
+                                  className="w-full h-24 object-cover rounded-lg mt-3 border border-gray-100"
+                                />
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="text-xs text-amber-600 mt-4 flex items-center gap-2 bg-amber-50 rounded-lg p-2 border border-amber-100">
+                      <Gift size={14} className="text-amber-500" />
+                      <span>এই অফারগুলো শুধুমাত্র আজকের জন্য - দ্রুত অর্ডার করুন!</span>
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-400 mt-3 flex items-center gap-1">
-                    <Gift size={11} /> ক্লিক করলে অর্ডারের সাথে যোগ হবে
-                  </p>
                 </div>
               )}
             </div>

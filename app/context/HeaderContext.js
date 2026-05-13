@@ -18,7 +18,7 @@ export default function HeaderProvider({ children }) {
   const [headerMenus, setHeaderMenus] = useState([]);
   const [footerMenus, setFooterMenus] = useState([]);
   const [socialLinks, setSocials] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchProducts, setSearchProducts] = useState([]);
   const [showResults, setShowResults] = useState(false);

@@ -22,7 +22,10 @@ const UpdateProduct = ({
   handleBumpImageChange,
   showSingleProductSizes,
   setShowSingleProductSizes,
-  removeImage
+  removeImage,
+  showUpsell,
+  setShowUpsell,
+  upsellProducts = [],
 }) => {
   const [addOffer, setAddOffer] = useState(!!formData.discount_price);
   const [addColors, setAddColors] = useState(formData.colors.length > 0 ? true : false);
@@ -395,14 +398,52 @@ const UpdateProduct = ({
                 type="checkbox"
                 id="showSingleProductSizes"
                 checked={showSingleProductSizes}
-                onChange={() => setShowSingleProductSizes(!showSingleProductSizes )}
+                onChange={() => setShowSingleProductSizes(!showSingleProductSizes)}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
               <label htmlFor="showSingleProductSizes" className="ml-2 block text-gray-700">
                 Single Product Sizes
               </label>
             </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="showUpsell"
+                checked={!!showUpsell}
+                onChange={() => setShowUpsell && setShowUpsell(v => !v)}
+                className="h-4 w-4 text-red-500 focus:ring-red-400 border-gray-300 rounded"
+              />
+              <label htmlFor="showUpsell" className="ml-2 block text-gray-700 font-medium text-red-600">
+                🎁 Upsell Offer
+              </label>
+            </div>
           </div>
+
+          {showUpsell && (
+            <div className="border border-red-200 bg-red-50 rounded-xl p-4 space-y-3">
+              <h4 className="text-sm font-bold text-red-700">Upsell Offer (Post-Order)</h4>
+              <p className="text-xs text-red-500">অর্ডার সম্পন্ন হলে কাস্টমারকে এই আপসেল পেজে নিয়ে যাওয়া হবে।</p>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Upsell Product</label>
+                <select
+                  value={formData.upsell_product_id || ""}
+                  onChange={e => setFormData(p => ({ ...p, upsell_product_id: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                >
+                  <option value="">-- আপসেল পণ্য বেছে নিন --</option>
+                  {upsellProducts.filter(u => u.is_active).map(u => (
+                    <option key={u.id} value={String(u.id)}>
+                      {u.name} (৳{Number(u.offer_price).toLocaleString()})
+                    </option>
+                  ))}
+                </select>
+                {upsellProducts.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">কোনো সক্রিয় আপসেল পণ্য নেই।</p>
+                )}
+              </div>
+            </div>
+          )}
           
           {showHomepageFields && (
             <div className="border p-4 rounded-lg space-y-4">

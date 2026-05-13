@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import React, { Suspense, useContext, useEffect, useMemo, useState, useCallback, useRef, use } from 'react';
+import React, { Suspense, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
@@ -219,8 +219,13 @@ const SimpleImageZoom = ({ src, alt, className, style }) => {
 
 
 const OrderPage = ({ params }) => {
-  const resolvedParams = use(params);
-  const slug = resolvedParams.slug;
+  // Handle async params in Next.js 15+
+  const resolvedParams = React.use(params);
+  const slug = resolvedParams?.['product-slug'] || '';
+
+  console.log('[OrderPage] resolvedParams:', resolvedParams);
+  console.log('[OrderPage] Component render, slug:', slug);
+
   const {
     apiUrl,
     imageUrl,
@@ -284,7 +289,18 @@ const OrderPage = ({ params }) => {
 
   const [paymentNumber, setPaymentNumber] = useState('');
   const [transactionId, setTransactionId] = useState('');
-  const { basePrice, productPrice, totalPrice, appliedDiscount } = calculatePrices();
+
+  // Use useMemo to safely calculate prices without causing render issues
+  const calculatedPrices = useMemo(() => {
+    try {
+      return calculatePrices();
+    } catch (error) {
+      console.error('[OrderPage] calculatePrices error:', error);
+      return { basePrice: 0, productPrice: 0, totalPrice: 0, appliedDiscount: null };
+    }
+  }, [products, quantity, selectedDistrict, districts, selectedBulkDiscount]);
+
+  const { basePrice, productPrice, totalPrice, appliedDiscount } = calculatedPrices;
 
 
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -305,14 +321,6 @@ const OrderPage = ({ params }) => {
 
   // Fetch data using custom hooks
   const { data: codAdvanceData } = useApiData(`${apiUrl}/codadvances`);
-  
-  // Memoized values
-  const priceDetails = useMemo(() => calculatePrices(), [
-    products,
-    quantity,
-    selectedBulkDiscount,
-    deliveryCharge
-  ]);
 
 
  const mobileInputRef = useRef(null);
@@ -487,7 +495,9 @@ const handleAddToCart = (product) => {
 
   // Fetch product details when slug changes
   useEffect(() => {
+    console.log('[OrderPage] useEffect triggered, slug:', slug);
     if (slug) {
+      console.log('[OrderPage] Calling fetchProductDetails for:', slug);
       fetchProductDetails(slug);
     }
   }, [slug, fetchProductDetails]);
@@ -713,6 +723,7 @@ const handleAddToCart = (product) => {
 
     const orderDetails = {
       order_id: randomNumber,
+      product_id: products?.id,
       product_name: products?.name,
       color: selectedColor || "",
       size: selectedSize || "",
@@ -755,7 +766,7 @@ const handleAddToCart = (product) => {
 
       setDataSaved(true);
       track('order', slug);
-      window.location.href = `/thankyou/${randomNumber}`;
+      window.location.href = `/upsell/${randomNumber}`;
       
     } catch (error) {
       let errorMessage = 'অর্ডার সাবমিশন ব্যর্থ হয়েছে';
@@ -1007,7 +1018,14 @@ const handleAddToCart = (product) => {
 
 
 
-  if (loading || headerLoading) {
+  // Check if we need to show loading
+  // Only show spinner if we're still loading AND no products loaded yet
+  // This prevents infinite loading when product data is available but loading state is slow
+  const shouldShowLoading = loading && !products?.id;
+
+  console.log('[OrderPage] Render - loading:', loading, 'headerLoading:', headerLoading, 'products.id:', products?.id, 'slug:', slug, 'shouldShowLoading:', shouldShowLoading);
+
+  if (shouldShowLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-green-500"></div>

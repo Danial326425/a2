@@ -8,6 +8,11 @@ const nextConfig = {
         port: '8000',
       },
     ],
+    localPatterns: [
+      {
+        pathname: '/api/storage/**',
+      },
+    ],
   },
 };
 

@@ -43,11 +43,14 @@ const ViewProduct = () => {
     bumps: [{ title: "", bump_price: "", image: null, description: "" }],
     homepage: { headline: "", paragraph: "", description: "" },
     singleProductSizes: [{ size: "" }],
+    has_upsell: false, upsell_product_id: "",
   });
-  const [showHomepageFields, setShowHomepageFields] = useState(false);
-  const [showBulkDiscounts, setShowBulkDiscounts] = useState(false);
-  const [showBumps, setShowBumps] = useState(false);
+  const [showHomepageFields, setShowHomepageFields]       = useState(false);
+  const [showBulkDiscounts, setShowBulkDiscounts]         = useState(false);
+  const [showBumps, setShowBumps]                         = useState(false);
   const [showSingleProductSizes, setShowSingleProductSizes] = useState(false);
+  const [showUpsell, setShowUpsell]                       = useState(false);
+  const [upsellProducts, setUpsellProducts]               = useState([]);
 
   // ── UI-only state ─────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
@@ -59,12 +62,14 @@ const ViewProduct = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [productsRes, categoriesRes] = await Promise.all([
+        const [productsRes, categoriesRes, upsellRes] = await Promise.all([
           axios.get(`${apiUrl}/products`),
           axios.get(`${apiUrl}/category`),
+          axios.get(`${apiUrl}/upsell-products`),
         ]);
         setProducts(productsRes.data);
         setCategories(categoriesRes.data.categories || []);
+        setUpsellProducts(upsellRes.data.upsell_products || []);
       } catch (err) {
         setError("Failed to load products and categories");
       } finally {
@@ -111,11 +116,14 @@ const ViewProduct = () => {
       })) || [],
       singleProductSizes: product.single_product_sizes?.map(s => ({ id: s.id, size: s.size || "" })) || [],
       homepage: product.homepage || { headline: "", paragraph: "", description: "" },
+      has_upsell: !!product.has_upsell,
+      upsell_product_id: product.upsell_product_id ? String(product.upsell_product_id) : "",
     });
     setShowHomepageFields(!!product.homepage);
     setShowBulkDiscounts(product.bulk_discounts?.length > 0);
     setShowBumps(product.bumps?.length > 0);
     setShowSingleProductSizes(product.single_product_sizes?.length > 0);
+    setShowUpsell(!!product.has_upsell);
   };
 
   const handleBumpImageChange = async (index, e) => {
@@ -171,6 +179,10 @@ const ViewProduct = () => {
       formData.category_id.forEach((id, i) => data.append(`categories[${i}]`, id));
       data.append("slug", formData.slug);
       data.append("clothing", formData.clothing ? "1" : "0");
+      data.append("has_upsell", showUpsell && formData.upsell_product_id ? "1" : "0");
+      if (showUpsell && formData.upsell_product_id) {
+        data.append("upsell_product_id", formData.upsell_product_id);
+      }
 
       if (showHomepageFields) {
         data.append("homepage[headline]", formData.homepage.headline || "");
@@ -554,6 +566,9 @@ const ViewProduct = () => {
                   showSingleProductSizes={showSingleProductSizes}
                   setShowSingleProductSizes={setShowSingleProductSizes}
                   removeImage={removeImage}
+                  showUpsell={showUpsell}
+                  setShowUpsell={setShowUpsell}
+                  upsellProducts={upsellProducts}
                 />
               </div>
             </motion.div>

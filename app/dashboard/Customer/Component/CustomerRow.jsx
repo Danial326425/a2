@@ -1,13 +1,14 @@
 import React from 'react';
-import { 
-  FaCheckCircle, 
-  FaTimesCircle, 
-  FaUndo, 
+import {
+  FaCheckCircle,
+  FaTimesCircle,
+  FaUndo,
   FaPauseCircle,
   FaExclamationTriangle,
   FaEye,
   FaPlusCircle,
-  FaMinusCircle
+  FaMinusCircle,
+  FaGift
 } from 'react-icons/fa';
 import StatusActions from './StatusActions';
 import FraudCheck from './FraudCheck';
@@ -182,6 +183,44 @@ const CustomerRow = ({
                   <span> -৳{Math.floor(app.product_price * discount.discount_percentage / 100)}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {app.upsell_product_id && (
+            <div className="mt-2 pt-2 border-t border-gray-100 text-xs">
+              <div className="font-medium text-gray-600 mb-1 flex items-center gap-1">
+                <FaGift className="text-red-400" /> আপসেল:
+              </div>
+              <div className="flex items-center gap-2">
+                {app.upsell_product?.image ? (
+                  <img
+                    src={`/api/storage/${app.upsell_product.image}`}
+                    alt={app.upsell_product.name}
+                    className="w-8 h-8 rounded object-contain border bg-gray-50 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-400 flex-shrink-0 text-base">
+                    🎁
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-gray-700 truncate">{app.upsell_product?.name || '—'}</div>
+                  {app.upsell_price && (
+                    <div className="text-red-600 font-semibold">৳{app.upsell_price}</div>
+                  )}
+                </div>
+                <span className={`flex-shrink-0 px-1.5 py-0.5 rounded-full font-semibold ${
+                  app.upsell_status === 'accepted'
+                    ? 'bg-green-100 text-green-700'
+                    : app.upsell_status === 'declined'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {app.upsell_status === 'accepted' ? '✓ Accepted'
+                    : app.upsell_status === 'declined' ? '✗ Declined'
+                    : 'Pending'}
+                </span>
+              </div>
             </div>
           )}
         </td>

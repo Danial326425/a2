@@ -10,7 +10,7 @@ export default function OrderProvider({ children }) {
   const apiUrl = config.apiUrl;
   const imageUrl = config.imageUrl;
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedColorId, setSelectedColorId] = useState(null);
   const [selectedSize, setSelectedSize] = useState('');
@@ -57,36 +57,43 @@ export default function OrderProvider({ children }) {
       }
     } catch (error) {
       // Non-fatal — page still renders, user picks district manually
+      console.error('[OrderContext] fetchInitialData error:', error);
     }
   }, [apiUrl]);
 
   const fetchProductDetails = useCallback(async (slug) => {
     try {
       setLoading(true);
+      console.log('[OrderContext] Fetching product:', slug);
+      console.log('[OrderContext] API URL:', `${apiUrl}/products/${slug}`);
+
       const [productResponse, allProductsResponse] = await Promise.all([
         axios.get(`${apiUrl}/products/${slug}`),
         axios.get(`${apiUrl}/products`),
       ]);
 
-      const productData = productResponse.data;
-      const allProducts = allProductsResponse.data;
-      const categoryId = productData.category_id;
+      console.log('[OrderContext] Product response:', productResponse);
+      console.log('[OrderContext] Product data:', productResponse.data);
 
-      // Debug logging - temporary for development
-      if (typeof window !== 'undefined') {
-        console.log('[ProductPage] Full API Response:', productData);
-        console.log('[ProductPage] Product images:', productData?.images);
-        console.log('[ProductPage] Product colors:', productData?.colors);
-        console.log('[ProductPage] Image URL:', imageUrl);
-      }
+      // Handle both direct data and wrapped response formats
+      const productData = productResponse.data?.data || productResponse.data;
+      const allProducts = allProductsResponse.data?.data || allProductsResponse.data;
 
-      const relatedProducts = allProducts.filter(
-        (product) => product.category_id === categoryId && product.id !== productData.id
-      );
+      console.log('[OrderContext] Extracted productData:', productData);
 
-      setProducts(productData);
-      setHomepage(productData.homepage);
-      setAllFilterProducts(relatedProducts);
+      const categoryId = productData?.category_id;
+
+      // Initialize bumps with selected: false
+      const initializedBumps = (productData?.bumps || []).map((bump) => ({
+        ...bump,
+        selected: false,
+      }));
+
+      console.log('[OrderContext] Setting products with:', { ...productData, bumps: initializedBumps });
+
+      setProducts({ ...productData, bumps: initializedBumps });
+      setHomepage(productData?.homepage);
+      setAllFilterProducts(allProducts || []);
 
       if (productData?.colors?.length > 0 && productData.colors[0]?.image) {
         const firstColor = productData.colors[0];
@@ -97,13 +104,15 @@ export default function OrderProvider({ children }) {
         // Fallback to first product image if no colors with images
         setCurrentImage(productData.images[0].image);
       }
-      setLoading(false);
     } catch (err) {
-      setLoading(false);
+      console.error('[OrderContext] Error fetching product:', err);
       if (err.response?.status === 429) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         await fetchProductDetails(slug);
+        return;
       }
+    } finally {
+      setLoading(false);
     }
   }, [apiUrl, imageUrl]);
 
@@ -152,12 +161,6 @@ export default function OrderProvider({ children }) {
 
     const totalPrice = Math.floor(basePrice + bumpsTotal - bulkDiscount + currentDeliveryCharge);
 
-    if (selectedDistrictData) {
-      setDeliveryCharge(currentDeliveryCharge);
-      setEstimatedDays(selectedDistrictData.estimated_days);
-      setDeliveryNote(selectedDistrictData.delivery_note || '');
-    }
-
     return {
       basePrice,
       bumpsTotal,
@@ -177,7 +180,12 @@ export default function OrderProvider({ children }) {
 
   const handleDistrictChange = (districtName) => {
     setSelectedDistrict(districtName);
-    calculatePrices();
+    const districtData = districts.find((d) => d.district_name === districtName);
+    if (districtData) {
+      setDeliveryCharge(districtData.delivery_charge);
+      setEstimatedDays(districtData.estimated_days);
+      setDeliveryNote(districtData.delivery_note || '');
+    }
   };
 
   const handleBumpSelect = useCallback((bumpId) => {

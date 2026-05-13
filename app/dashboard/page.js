@@ -58,6 +58,9 @@ const ViewBanner = dynamic(() => import("./Banner/ViewBanner"), { ssr: false });
 const CreateLandingPage = dynamic(() => import("./LandingPage/CreateLandingPage"), { ssr: false });
 const LandingPageView = dynamic(() => import("./LandingPage/LandingPageView"), { ssr: false });
 const OwnTracking = dynamic(() => import("./Tracking/OwnTracking"), { ssr: false });
+const CreateUpsellProduct = dynamic(() => import("./Upsell/CreateUpsellProduct"), { ssr: false });
+const ViewUpsellProducts  = dynamic(() => import("./Upsell/ViewUpsellProducts"),  { ssr: false });
+const UpsellSettings      = dynamic(() => import("./Upsell/UpsellSettings"),      { ssr: false });
 
 
 const Dashboard = () => {
@@ -112,13 +115,15 @@ const Dashboard = () => {
         "congratesOverview", "createForm", "formOverview", "customerOverview", "createOrder",
         "transactionOverview", "usersOverview", "dashboard", "leadOverview","createPaymentMethod",
         "paymentMethodOverview", "createCommunity", "communityOverview", "createAdvancePay", "advancePayOverview","createBanner", "bannerOverview", "createLandingPage","landingPageOverview",
-        "trackingOverview"
+        "trackingOverview",
+        "createUpsellProduct", "upsellProductOverview", "upsellSettings"
       ],
       moderator: [
         // Moderator specific access
         "categoryOverview", "productOverview", "customerOverview", "createOrder", "dashboard",
         "createCategory", "createProduct", "contactOverview", "createSteadfast", "steadfastOverview",
-        "leadOverview", "createCommunity", "communityOverview","createBanner", "bannerOverview"
+        "leadOverview", "createCommunity", "communityOverview","createBanner", "bannerOverview",
+        "createUpsellProduct", "upsellProductOverview", "upsellSettings"
       ],
       user: ["dashboard"] // Basic user access
     };
@@ -238,6 +243,13 @@ const Dashboard = () => {
 
       case "trackingOverview":
         return <OwnTracking />;
+
+      case "createUpsellProduct":
+        return <CreateUpsellProduct onCreated={() => setSelectedMenu('upsellProductOverview')} onCancel={() => setSelectedMenu('upsellProductOverview')} />;
+      case "upsellProductOverview":
+        return <ViewUpsellProducts onCreateNew={() => setSelectedMenu('createUpsellProduct')} />;
+      case "upsellSettings":
+        return <UpsellSettings />;
 
       case "createOrder":
         return <CreateOrder onOrderCreated={() => setSelectedMenu('customerOverview')} />;

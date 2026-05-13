@@ -17,6 +17,7 @@ import {
   Shield,
   CreditCard,
   ArrowUpCircle,
+  Gift,
   Wallet,
   Truck,
   Receipt,
@@ -84,6 +85,28 @@ const MENU_GROUPS = [
             key: "landingPageSub",
             subItems: [
               { name: "View Landing Pages", key: "landingPageOverview" },
+            ],
+          },
+        ],
+      },
+      {
+        title: "Upsell Funnel",
+        icon: Gift,
+        key: "upsell",
+        subMenus: [
+          {
+            title: "Upsell Products",
+            key: "upsellProductsSub",
+            subItems: [
+              { name: "Add Upsell Product", key: "createUpsellProduct" },
+              { name: "View Upsell Products", key: "upsellProductOverview" },
+            ],
+          },
+          {
+            title: "Page Settings",
+            key: "upsellSettingsSub",
+            subItems: [
+              { name: "Upsell Page Settings", key: "upsellSettings" },
             ],
           },
         ],
@@ -277,6 +300,10 @@ const ROLE_ACCESS = {
       categoriesSub: ["createCategory", "categoryOverview"],
       landingPageSub: ["createLandingPage", "landingPageOverview"],
     },
+    upsell: {
+      upsellProductsSub: ["createUpsellProduct", "upsellProductOverview"],
+      upsellSettingsSub: ["upsellSettings"],
+    },
     customers: ["customerOverview"],
     leads: ["leadOverview"],
     siteManagement: {
@@ -304,6 +331,10 @@ const ROLE_ACCESS = {
     products: {
       productsSub: ["createProduct", "productOverview"],
       categoriesSub: ["createCategory", "categoryOverview"],
+    },
+    upsell: {
+      upsellProductsSub: ["createUpsellProduct", "upsellProductOverview"],
+      upsellSettingsSub: ["upsellSettings"],
     },
     customers: ["customerOverview"],
     leads: ["leadOverview"],
