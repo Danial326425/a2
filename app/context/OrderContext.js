@@ -61,49 +61,64 @@ export default function OrderProvider({ children }) {
     }
   }, [apiUrl]);
 
+  // Apply product data to local state. Used by both SSR hydration (Phase 2)
+  // and the client-side fetchProductDetails fallback.
+  const applyProductData = useCallback((productData) => {
+    if (!productData) return;
+
+    const initializedBumps = (productData?.bumps || []).map((bump) => ({
+      ...bump,
+      selected: false,
+    }));
+
+    setProducts({ ...productData, bumps: initializedBumps });
+    setHomepage(productData?.homepage);
+
+    if (productData?.colors?.length > 0 && productData.colors[0]?.image) {
+      const firstColor = productData.colors[0];
+      setSelectedColor(firstColor.color);
+      setCurrentImage(firstColor.image);
+      setSelectedColorId(firstColor.id);
+    } else if (productData?.images?.length > 0 && productData.images[0]?.image) {
+      setCurrentImage(productData.images[0].image);
+    }
+  }, []);
+
+  // Background fetch for the "Related Products" rail. Below-the-fold, so deferred.
+  const fetchAllProducts = useCallback(async () => {
+    try {
+      const res = await axios.get(`${apiUrl}/products`);
+      const list = res.data?.data || res.data;
+      setAllFilterProducts(Array.isArray(list) ? list : []);
+    } catch (err) {
+      // Non-fatal — related products simply won't render
+      console.error('[OrderContext] fetchAllProducts error:', err);
+    }
+  }, [apiUrl]);
+
+  // SSR-hydration entry point. Called by OrderPageClient when the server has
+  // already delivered the product, eliminating the duplicate /products/{slug} fetch.
+  const hydrateProduct = useCallback((productData) => {
+    applyProductData(productData);
+    setLoading(false);
+  }, [applyProductData]);
+
+  // Client-side fallback for navigations without SSR (e.g., next/link to a product
+  // before the route is prefetched). Kept for back-compat.
   const fetchProductDetails = useCallback(async (slug) => {
     try {
       setLoading(true);
-      console.log('[OrderContext] Fetching product:', slug);
-      console.log('[OrderContext] API URL:', `${apiUrl}/products/${slug}`);
 
       const [productResponse, allProductsResponse] = await Promise.all([
         axios.get(`${apiUrl}/products/${slug}`),
         axios.get(`${apiUrl}/products`),
       ]);
 
-      console.log('[OrderContext] Product response:', productResponse);
-      console.log('[OrderContext] Product data:', productResponse.data);
-
-      // Handle both direct data and wrapped response formats
       const productData = productResponse.data?.data || productResponse.data;
       const allProducts = allProductsResponse.data?.data || allProductsResponse.data;
 
-      console.log('[OrderContext] Extracted productData:', productData);
-
-      const categoryId = productData?.category_id;
-
-      // Initialize bumps with selected: false
-      const initializedBumps = (productData?.bumps || []).map((bump) => ({
-        ...bump,
-        selected: false,
-      }));
-
-      console.log('[OrderContext] Setting products with:', { ...productData, bumps: initializedBumps });
-
-      setProducts({ ...productData, bumps: initializedBumps });
-      setHomepage(productData?.homepage);
-      setAllFilterProducts(allProducts || []);
-
-      if (productData?.colors?.length > 0 && productData.colors[0]?.image) {
-        const firstColor = productData.colors[0];
-        setSelectedColor(firstColor.color);
-        setCurrentImage(firstColor.image);
-        setSelectedColorId(firstColor.id);
-      } else if (productData?.images?.length > 0 && productData.images[0]?.image) {
-        // Fallback to first product image if no colors with images
-        setCurrentImage(productData.images[0].image);
-      }
+      applyProductData(productData);
+      setAllFilterProducts(Array.isArray(allProducts) ? allProducts : []);
     } catch (err) {
       console.error('[OrderContext] Error fetching product:', err);
       if (err.response?.status === 429) {
@@ -114,7 +129,7 @@ export default function OrderProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, imageUrl]);
+  }, [apiUrl, applyProductData]);
 
   useEffect(() => {
     fetchInitialData();
@@ -236,6 +251,8 @@ export default function OrderProvider({ children }) {
         setAutoAppliedDiscount,
         handleBumpSelect,
         fetchProductDetails,
+        hydrateProduct,
+        fetchAllProducts,
         setSelectedDistrict,
         setEstimatedDays,
       }}

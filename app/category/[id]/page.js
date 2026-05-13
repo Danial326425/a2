@@ -11,8 +11,10 @@ import 'slick-carousel/slick/slick-theme.css';
 import { initFacebookPixels, trackEventOnMultiplePixels } from '@/pixel';
 import { FaChevronDown, FaChevronUp, FaShoppingCart } from 'react-icons/fa';
 import { ProductContext } from '../../context/ProductsContext';
-import { useCart } from 'react-use-cart';
+import { useCart } from '../../context/CartContext';
 import CartPanel from '../../components/CartPanel';
+
+const imageProxyUrl = '/api/storage';
 
 const sliderSettings = {
   dots: false,
@@ -228,10 +230,11 @@ function CategoryProductCard({
   const productOptions = selectedOptions[product.id] || {};
   const selectedColor = product.colors?.find((c) => c.id === productOptions.colorId);
   const isDropdownOpen = openDropdowns[product.id];
-  const hasColors = product.colors?.length > 0;
-  const hasSizes = product.clothing && selectedColor?.sizes?.length > 0;
-  const hasSingleSizes = product.single_product_sizes?.length > 0;
-  const isSingleSizeProduct = hasSingleSizes && !hasColors && !product.clothing;
+  const hasColors = (product.colors?.length ?? 0) > 0;
+  const colorHasSizes = (selectedColor?.sizes?.length ?? 0) > 0;
+  const anyColorHasSizes = Boolean(product.colors?.some((c) => (c.sizes?.length ?? 0) > 0));
+  const hasSingleSizes = (product.single_product_sizes?.length ?? 0) > 0;
+  const isSingleSizeProduct = hasSingleSizes && !hasColors;
 
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col h-full relative">
@@ -262,14 +265,14 @@ function CategoryProductCard({
           />
         )}
 
-        {(hasColors || hasSizes) > 0 && (
+        {(hasColors || anyColorHasSizes) && (
           <OptionsDropdown
             product={product}
             productOptions={productOptions}
             selectedColor={selectedColor}
             isOpen={isDropdownOpen}
             hasColors={hasColors}
-            hasSizes={hasSizes}
+            hasSizes={colorHasSizes}
             onToggle={() => onToggleDropdown(product.id)}
             onColorSelect={(colorId) => onColorSelect(product.id, colorId)}
             onSizeSelect={(sizeId) => onSizeSelect(product.id, sizeId)}
@@ -301,10 +304,11 @@ function ProductImage({ product, hasColors }) {
     if (product.colors.length === 1) {
       return (
         <Image
-          src={`${product.colors[0].image}`}
+          src={`${imageProxyUrl}/${product.colors[0].image}`}
           alt={product.name}
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-105"
+          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
           unoptimized
         />
       );
@@ -313,12 +317,14 @@ function ProductImage({ product, hasColors }) {
     return (
       <Slider {...sliderSettings}>
         {product.colors.map((color) => (
-          <div key={color.id} className="h-full w-full relative">
+          <div key={color.id}>
             <Image
-              src={`${color.image}`}
+              src={`${imageProxyUrl}/${color.image}`}
               alt={`${color.color} ${product.name}`}
-              fill
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              width={500}
+              height={500}
+              className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-105"
+              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
               unoptimized
             />
           </div>
@@ -329,10 +335,11 @@ function ProductImage({ product, hasColors }) {
 
   return (
     <Image
-      src={`${product.images[0]?.image}`}
+      src={`${imageProxyUrl}/${product.images[0]?.image}`}
       alt={product.name}
       fill
       className="object-cover transition-transform duration-500 group-hover:scale-105"
+      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
       unoptimized
     />
   );
@@ -407,17 +414,33 @@ function OptionsDropdown({
             <div>
               <label className="block text-xs text-gray-500 mb-1">Color:</label>
               <div className="flex flex-wrap gap-2">
-                {product.colors.map((color) => (
-                  <button
-                    key={color.id}
-                    onClick={() => onColorSelect(color.id)}
-                    className={`w-8 h-8 rounded-full border-2 ${
-                      productOptions.colorId === color.id ? 'border-blue-500' : 'border-gray-300'
-                    } transition-colors`}
-                    style={{ backgroundColor: color.color.toLowerCase() }}
-                    title={color.color}
-                  />
-                ))}
+                {product.colors.map((color) => {
+                  const isSelected = productOptions.colorId === color.id;
+                  return (
+                    <button
+                      key={color.id}
+                      onClick={() => onColorSelect(color.id)}
+                      className={`w-10 h-10 rounded-full border-2 overflow-hidden flex items-center justify-center transition-all ${
+                        isSelected
+                          ? 'border-blue-500 ring-2 ring-blue-300 scale-110'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      style={!color.image ? { backgroundColor: color.color?.toLowerCase() } : undefined}
+                      title={color.color}
+                    >
+                      {color.image && (
+                        <Image
+                          src={`${imageProxyUrl}/${color.image}`}
+                          alt={color.color || 'color'}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

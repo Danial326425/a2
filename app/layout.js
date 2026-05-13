@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { CartProvider } from "./context/CartContext";
 import OrderProvider from './context/OrderContext';
 import HeaderProvider from "./context/HeaderContext";
 import ProductProvider from "./context/ProductsContext";
@@ -27,15 +28,17 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ProductProvider>
-          <HeaderProvider>
-            <OrderProvider>
-              <ClientLayout>
-                {children}
-              </ClientLayout>
-            </OrderProvider>
-          </HeaderProvider>
-        </ProductProvider>
+        <CartProvider>
+          <ProductProvider>
+            <HeaderProvider>
+              <OrderProvider>
+                <ClientLayout>
+                  {children}
+                </ClientLayout>
+              </OrderProvider>
+            </HeaderProvider>
+          </ProductProvider>
+        </CartProvider>
       </body>
     </html>
   );

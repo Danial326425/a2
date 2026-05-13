@@ -3,7 +3,7 @@
 import React, { useContext, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCart } from 'react-use-cart';
+import { useCart } from '../context/CartContext';
 import { FaTimes, FaPlus, FaMinus, FaTrash } from 'react-icons/fa';
 import { config } from '@/config/config';
 import { trackEventOnMultiplePixels } from '@/pixel';
@@ -109,19 +109,20 @@ function CartPanelContent({
   updateItemQuantity,
   removeItem,
   cartTotal,
-  imageUrl,
+  imageProxyUrl,
 }) {
   return (
     <div className="relative">
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
-          onClick={toggleCart}
-        />
-      )}
+      <div
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+          isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={toggleCart}
+        aria-hidden="true"
+      />
 
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform duration-300 ease-in-out z-50 ${
+        className={`fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
