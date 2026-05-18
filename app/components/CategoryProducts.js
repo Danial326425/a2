@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Slider from 'react-slick';
@@ -56,7 +56,6 @@ export default function CategoryProducts() {
     }
 
     if (
-      product.clothing &&
       product.colors?.find((c) => c.id === selectedOptions[product.id]?.colorId)
         ?.sizes?.length > 0 &&
       !selectedOptions[product.id]?.sizeId
@@ -81,9 +80,9 @@ export default function CategoryProducts() {
       const selectedColor = product.colors.find(
         (c) => c.id === selectedOptions[product.id]?.colorId
       );
-      const selectedSize = product.clothing
-        ? selectedColor?.sizes?.find((s) => s.id === selectedOptions[product.id]?.sizeId)
-        : null;
+      const selectedSize = selectedColor?.sizes?.find(
+        (s) => s.id === selectedOptions[product.id]?.sizeId
+      ) ?? null;
 
       cartItem = {
         ...cartItem,
@@ -114,9 +113,12 @@ export default function CategoryProducts() {
     addItem(cartItem);
   };
 
-  const homepageCategories = categories
-    .filter((category) => category.show_on_homepage === 1)
-    .sort((a, b) => a.sort_order - b.sort_order);
+  const homepageCategories = useMemo(() =>
+    categories
+      .filter((category) => category.show_on_homepage)
+      .sort((a, b) => a.sort_order - b.sort_order),
+    [categories]
+  );
 
   return (
     <div className="bg-gray-50 min-h-screen relative pb-16">
@@ -126,8 +128,12 @@ export default function CategoryProducts() {
             .filter((product) => product.categories?.some((c) => c.id === category.id))
             .reverse();
 
-          const displayedProducts = allCategoryProducts.slice(0, category.product_limit);
-          const hasMoreProducts = allCategoryProducts.length > category.product_limit;
+          const displayedProducts = category.product_limit
+            ? allCategoryProducts.slice(0, category.product_limit)
+            : allCategoryProducts;
+          const hasMoreProducts = category.product_limit
+            ? allCategoryProducts.length > category.product_limit
+            : false;
 
           if (displayedProducts.length === 0) return null;
 
@@ -271,7 +277,7 @@ function ProductCard({
 
         <button
           onClick={() => onAddToCart(product)}
-          className="mt-3 w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-md font-medium text-sm flex items-center justify-center gap-2 hover:from-blue-600 hover:to-blue-700 transition-colors shadow-md hover:shadow-lg"
+          className="mt-3 w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-md font-medium text-sm flex items-center justify-center gap-2 hover:from-blue-600 hover:to-blue-700 transition-colors shadow-md hover:shadow-lg cursor-pointer"
         >
           <FaShoppingCart className="text-sm" />
           Add to Cart
@@ -370,7 +376,7 @@ function SingleSizeSelector({ product, productOptions, onSizeSelect }) {
           <button
             key={size.id}
             onClick={() => onSizeSelect(size.id)}
-            className={`py-1 text-xs rounded ${
+            className={`py-1 text-xs rounded cursor-pointer ${
               productOptions.sizeId === size.id
                 ? 'bg-blue-500 text-white'
                 : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
@@ -399,7 +405,7 @@ function OptionsDropdown({
     <div className="mt-3">
       <button
         onClick={onToggle}
-        className="w-full flex justify-between items-center px-3 py-2 bg-gray-100 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+        className="w-full flex justify-between items-center px-3 py-2 bg-gray-100 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
       >
         <span>Select Options</span>
         {isOpen ? <FaChevronUp className="text-gray-500 text-xs" /> : <FaChevronDown className="text-gray-500 text-xs" />}
@@ -417,7 +423,7 @@ function OptionsDropdown({
                     <button
                       key={color.id}
                       onClick={() => onColorSelect(color.id)}
-                      className={`w-10 h-10 rounded-full border-2 overflow-hidden flex items-center justify-center transition-all ${
+                      className={`w-10 h-10 rounded-full border-2 overflow-hidden flex items-center justify-center transition-all cursor-pointer ${
                         isSelected
                           ? 'border-blue-500 ring-2 ring-blue-300 scale-110'
                           : 'border-gray-300 hover:border-gray-400'

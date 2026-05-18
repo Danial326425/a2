@@ -37,7 +37,7 @@ const ViewProduct = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
-    name: "", price: "", discount_price: "", category_id: [], clothing: false,
+    name: "", price: "", discount_price: "", max_per_order: "", category_id: [], clothing: false,
     images: [], colors: [{ color: "", image: null, sizes: [{ size: "" }] }],
     bulk_discounts: [{ title: "", offer_quantity: "", discount_percentage: "" }],
     bumps: [{ title: "", bump_price: "", image: null, description: "" }],
@@ -99,6 +99,7 @@ const ViewProduct = () => {
       name: product.name || "",
       price: product.price || "",
       discount_price: product.discount_price || "",
+      max_per_order: product.max_per_order ?? "",
       category_id: product.categories?.map(c => c.id) || [],
       clothing: product.clothing || false,
       images: product.images || [],
@@ -176,6 +177,7 @@ const ViewProduct = () => {
       data.append("name", formData.name);
       data.append("price", formData.price);
       data.append("discount_price", formData.discount_price || "");
+      data.append("max_per_order", formData.max_per_order || "");
       formData.category_id.forEach((id, i) => data.append(`categories[${i}]`, id));
       data.append("slug", formData.slug);
       data.append("clothing", formData.clothing ? "1" : "0");

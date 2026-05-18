@@ -2,8 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { ImCross } from "react-icons/im";
+import axios from "axios";
 import QuillEditor from "../../components/QuillEditor";
 import { config } from "../../../config";
+
+const apiUrl = config.apiUrl;
 
 const UpdateProduct = ({
   formData,
@@ -27,9 +30,20 @@ const UpdateProduct = ({
   setShowUpsell,
   upsellProducts = [],
 }) => {
-  const [addOffer, setAddOffer] = useState(!!formData.discount_price);
-  const [addColors, setAddColors] = useState(formData.colors.length > 0 ? true : false);
-  const [error, setError] = useState(null);
+  const [addOffer, setAddOffer]               = useState(!!formData.discount_price);
+  const [addColors, setAddColors]             = useState(formData.colors.length > 0);
+  const [error, setError]                     = useState(null);
+  const [colorPresets, setColorPresets]       = useState([]);
+  const [sizePresets, setSizePresets]         = useState([]);
+  const [sizeGroupPresets, setSizeGroupPresets] = useState([]);
+
+  useEffect(() => {
+    Promise.all([
+      axios.get(`${apiUrl}/color-presets`).then(r => setColorPresets(r.data || [])),
+      axios.get(`${apiUrl}/size-presets`).then(r => setSizePresets(r.data || [])),
+      axios.get(`${apiUrl}/size-group-presets`).then(r => setSizeGroupPresets(r.data || [])),
+    ]).catch(() => {});
+  }, []);
 
   const imageUrl = config.imageUrl;
 
@@ -174,7 +188,53 @@ const UpdateProduct = ({
 
   const handleCheckedColor = () => {
     setAddColors(!addColors);
-    setFormData(prev => ({ ...prev, clothing: !addColors }));
+  };
+
+  const addColorFromPreset = (colorName) => {
+    setFormData(prev => ({
+      ...prev,
+      colors: [...prev.colors, { color: colorName, image: null, sizes: [{ size: "" }] }],
+    }));
+  };
+
+  const addSizeFromPreset = (cIdx, sizeName) => {
+    setFormData(prev => {
+      const colors = [...prev.colors];
+      const sizes = [...colors[cIdx].sizes];
+      const lastIdx = sizes.length - 1;
+      if (sizes[lastIdx].size === "") {
+        sizes[lastIdx] = { ...sizes[lastIdx], size: sizeName };
+      } else {
+        sizes.push({ size: sizeName });
+      }
+      colors[cIdx] = { ...colors[cIdx], sizes };
+      return { ...prev, colors };
+    });
+  };
+
+  const addSizeGroupToColor = (cIdx, groupSizes) => {
+    setFormData(prev => {
+      const colors = [...prev.colors];
+      const existingSizes = colors[cIdx].sizes.filter(s => s.size !== "");
+      colors[cIdx] = {
+        ...colors[cIdx],
+        sizes: [...existingSizes, ...groupSizes.map(sz => ({ size: sz }))],
+      };
+      return { ...prev, colors };
+    });
+  };
+
+  const addSingleSizeFromPreset = (sizeName) => {
+    setFormData(prev => {
+      const sizes = [...prev.singleProductSizes];
+      const lastIdx = sizes.length - 1;
+      if (sizes[lastIdx]?.size === "") {
+        sizes[lastIdx] = { ...sizes[lastIdx], size: sizeName };
+      } else {
+        sizes.push({ size: sizeName });
+      }
+      return { ...prev, singleProductSizes: sizes };
+    });
   };
 
   const handleSingleSizeChange = (index, e) => {
@@ -328,20 +388,22 @@ const UpdateProduct = ({
             </div>
           )}
 
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="clothing"
-                checked={formData.clothing}
-                onChange={(e) => setFormData(prev => ({ ...prev, clothing: e.target.checked }))}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="clothing" className="ml-2 block text-gray-700">
-                Clothing Item
-              </label>
-            </div>
+          <div>
+            <label className="block text-gray-700 mb-1">Max Qty per Order</label>
+            <input
+              type="number"
+              name="max_per_order"
+              value={formData.max_per_order ?? ""}
+              onChange={handleChange}
+              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Leave blank to use global limit"
+              min="1"
+              max="1000"
+            />
+            <p className="text-xs text-gray-500 mt-1">Leave blank to use the global limit from Order Settings.</p>
+          </div>
 
+          <div className="flex items-center space-x-4">
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -607,6 +669,25 @@ const UpdateProduct = ({
 
           {addColors && (
             <div className="space-y-4">
+              {/* Color preset chips */}
+              {colorPresets.length > 0 && (
+                <div className="mb-2">
+                  <p className="text-xs text-gray-400 mb-1.5">Saved colors — click to add:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {colorPresets.map(cp => (
+                      <button
+                        key={cp.id}
+                        type="button"
+                        onClick={() => addColorFromPreset(cp.name)}
+                        className="px-3 py-1 text-xs font-medium bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-full hover:bg-indigo-100 transition-colors cursor-pointer"
+                      >
+                        + {cp.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {formData.colors.map((color, colorIndex) => (
                 <div key={colorIndex} className="border p-4 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
@@ -651,6 +732,34 @@ const UpdateProduct = ({
                   />
 
                   <label className="block text-gray-700 mt-2 mb-1">Sizes</label>
+
+                  {/* Size preset chips */}
+                  {(sizePresets.length > 0 || sizeGroupPresets.length > 0) && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {sizePresets.map(sp => (
+                        <button
+                          key={sp.id}
+                          type="button"
+                          onClick={() => addSizeFromPreset(colorIndex, sp.name)}
+                          className="px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full hover:bg-emerald-100 transition-colors cursor-pointer"
+                        >
+                          + {sp.name}
+                        </button>
+                      ))}
+                      {sizeGroupPresets.map(sg => (
+                        <button
+                          key={sg.id}
+                          type="button"
+                          onClick={() => addSizeGroupToColor(colorIndex, sg.sizes)}
+                          className="px-2.5 py-1 text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200 rounded-full hover:bg-violet-100 transition-colors cursor-pointer"
+                          title={`Apply: ${(sg.sizes || []).join(", ")}`}
+                        >
+                          ⚡ {sg.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {color.sizes.map((size, sizeIndex) => (
                     <div key={sizeIndex} className="flex items-center space-x-2 mb-2">
                       <input
@@ -787,6 +896,39 @@ const UpdateProduct = ({
           {showSingleProductSizes && (
             <div className="border p-4 rounded-lg space-y-4">
               <h3 className="text-lg font-medium">Single Product Sizes</h3>
+
+              {/* Size preset chips */}
+              {(sizePresets.length > 0 || sizeGroupPresets.length > 0) && (
+                <div className="flex flex-wrap gap-1.5">
+                  {sizePresets.map(sp => (
+                    <button
+                      key={sp.id}
+                      type="button"
+                      onClick={() => addSingleSizeFromPreset(sp.name)}
+                      className="px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full hover:bg-emerald-100 transition-colors cursor-pointer"
+                    >
+                      + {sp.name}
+                    </button>
+                  ))}
+                  {sizeGroupPresets.map(sg => (
+                    <button
+                      key={sg.id}
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => {
+                          const existing = (prev.singleProductSizes || []).filter(s => s.size !== "");
+                          return { ...prev, singleProductSizes: [...existing, ...(sg.sizes || []).map(sz => ({ size: sz }))] };
+                        });
+                      }}
+                      className="px-2.5 py-1 text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200 rounded-full hover:bg-violet-100 transition-colors cursor-pointer"
+                      title={`Apply: ${(sg.sizes || []).join(", ")}`}
+                    >
+                      ⚡ {sg.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {(formData.singleProductSizes || []).map((size, index) => (
                 <div key={index} className="border p-3 rounded space-y-3">
                   <div className="flex items-center space-x-2">

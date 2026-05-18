@@ -81,6 +81,13 @@ const MENU_GROUPS = [
             ],
           },
           {
+            title: "Variation Library",
+            key: "variationLibrarySub",
+            subItems: [
+              { name: "Colors & Sizes Library", key: "variationLibrary" },
+            ],
+          },
+          {
             title: "Landing Pages",
             key: "landingPageSub",
             subItems: [
@@ -287,6 +294,12 @@ const MENU_GROUPS = [
         key: "users",
         directItem: "usersOverview",
       },
+      {
+        title: "Order Settings",
+        icon: Shield,
+        key: "orderSettings",
+        directItem: "orderSettings",
+      },
     ],
   },
 ];
@@ -298,6 +311,7 @@ const ROLE_ACCESS = {
     products: {
       productsSub: ["createProduct", "productOverview"],
       categoriesSub: ["createCategory", "categoryOverview"],
+      variationLibrarySub: ["variationLibrary"],
       landingPageSub: ["createLandingPage", "landingPageOverview"],
     },
     upsell: {
@@ -325,12 +339,14 @@ const ROLE_ACCESS = {
     ownTracking: ["trackingOverview"],
     steadfast: { steadfastSub: ["createSteadfast", "steadfastOverview"] },
     users: ["usersOverview"],
+    orderSettings: ["orderSettings"],
   },
   moderator: {
     dashboard: ["dashboard"],
     products: {
       productsSub: ["createProduct", "productOverview"],
       categoriesSub: ["createCategory", "categoryOverview"],
+      variationLibrarySub: ["variationLibrary"],
     },
     upsell: {
       upsellProductsSub: ["createUpsellProduct", "upsellProductOverview"],

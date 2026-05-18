@@ -10,16 +10,14 @@ import {
   FaMinusCircle,
   FaGift
 } from 'react-icons/fa';
-import StatusActions from './StatusActions';
-import FraudCheck from './FraudCheck';
 import { config } from '../../../../config';
 
-const CustomerRow = ({ 
-  app, 
-  selected, 
-  onCheckboxChange, 
-  onEditClick, 
-  onPrintClick, 
+const CustomerRow = ({
+  app,
+  selected,
+  onCheckboxChange,
+  onEditClick,
+  onPrintClick,
   onDeleteClick,
   onAddPointsClick,
   getStatusColor,
@@ -29,10 +27,24 @@ const CustomerRow = ({
   onUpdateStatus,
   activeTab,
   fraudDetails,
+  fraudThreshold,
   handleImageClick,
-  checkFraudDetails,
-
 }) => {
+  const fd = fraudDetails?.[app.phone_number];
+  const d = fd?.data;
+  const total = d ? Number(d.total_parcels ?? d.total_orders ?? 0) : 0;
+  const delivered = d ? Number(d.total_delivered ?? 0) : 0;
+  const failed = d ? Number(d.total_cancelled ?? 0) : 0;
+  const pending = Math.max(0, total - delivered - failed);
+  const deliveredPct = total > 0 ? Math.round((delivered / total) * 100) : 0;
+  const failedPct = total > 0 ? Math.round((failed / total) * 100) : 0;
+  const pendingPct = Math.max(0, 100 - deliveredPct - failedPct);
+  const finalized = delivered + failed;
+  const steadfastSpam =
+    fraudThreshold > 0 &&
+    finalized >= 3 &&
+    (delivered / finalized) * 100 < fraudThreshold;
+  const showSpam = !!app.is_spam || steadfastSpam;
 
   return (
     <React.Fragment>
@@ -47,7 +59,14 @@ const CustomerRow = ({
         </td>
         <td className="px-2 py-4 whitespace-nowrap">
           <div className="flex flex-col">
-            <span className="font-medium text-gray-900">{app.customer_name}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-900">{app.customer_name}</span>
+              {showSpam && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 border border-red-200">
+                  SPAM
+                </span>
+              )}
+            </div>
             <span className="text-xs text-gray-500">{app.order_id}</span>
             <span className="text-xs text-gray-500">
               {new Date(app.created_at).toLocaleString('en-GB', {
@@ -60,6 +79,52 @@ const CustomerRow = ({
               })}
             </span>
             <span className="text-sm text-gray-700">{app.phone_number}</span>
+            {fd?.loading && (
+              <span className="text-[10px] text-gray-400 mt-1">Loading courier stats…</span>
+            )}
+            {fd?.error && (
+              <span className="text-[10px] text-red-500 mt-1">Stats unavailable</span>
+            )}
+            {d && total > 0 && (
+              <div className="mt-1 w-44">
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden flex">
+                  {deliveredPct > 0 && (
+                    <div
+                      className="h-full bg-green-500"
+                      style={{ width: `${deliveredPct}%` }}
+                      title={`Delivered: ${deliveredPct}%`}
+                    />
+                  )}
+                  {failedPct > 0 && (
+                    <div
+                      className="h-full bg-red-500"
+                      style={{ width: `${failedPct}%` }}
+                      title={`Returned/Cancelled: ${failedPct}%`}
+                    />
+                  )}
+                  {pendingPct > 0 && (
+                    <div
+                      className="h-full bg-gray-300"
+                      style={{ width: `${pendingPct}%` }}
+                      title={`Pending: ${pendingPct}%`}
+                    />
+                  )}
+                </div>
+                <div className="text-[10px] text-gray-600 mt-0.5 leading-tight">
+                  <span className="font-semibold">{total}</span> Orders:
+                  {' '}<span className="text-green-600 font-semibold">{delivered} Delivered</span>
+                  {failed > 0 && (
+                    <>, <span className="text-red-600 font-semibold">{failed} Returned/Cancelled</span></>
+                  )}
+                  {pending > 0 && (
+                    <>, <span className="text-gray-500 font-semibold">{pending} Pending</span></>
+                  )}
+                </div>
+              </div>
+            )}
+            {d && total === 0 && (
+              <span className="text-[10px] text-gray-400 mt-1">No courier history</span>
+            )}
             {app.payment_number && app.transaction_id && (
               <>
                 <span className="text-sm text-gray-700">{app.payment_method}: {app.payment_number}</span>
@@ -319,23 +384,6 @@ const CustomerRow = ({
         </td>
       </tr>
       
-      <tr className="bg-gray-50">
-        <td colSpan="9" className="px-4 py-4">
-          {/* <StatusActions 
-            appId={app.id}
-            phoneNumber={app.phone_number}
-            onUpdateStatus={onUpdateStatus}
-          /> */}
-        
-          <FraudCheck 
-            appId={app.id}
-            customerName={app.customer_name}
-            phoneNumber={app.phone_number}
-            fraudDetails={fraudDetails}
-            checkFraudDetails={checkFraudDetails} 
-          />
-        </td>
-      </tr>
     </React.Fragment>
   );
 };

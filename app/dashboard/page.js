@@ -61,6 +61,8 @@ const OwnTracking = dynamic(() => import("./Tracking/OwnTracking"), { ssr: false
 const CreateUpsellProduct = dynamic(() => import("./Upsell/CreateUpsellProduct"), { ssr: false });
 const ViewUpsellProducts  = dynamic(() => import("./Upsell/ViewUpsellProducts"),  { ssr: false });
 const UpsellSettings      = dynamic(() => import("./Upsell/UpsellSettings"),      { ssr: false });
+const VariationLibrary    = dynamic(() => import("./Presets/VariationLibrary"),   { ssr: false });
+const ViewOrderSettings   = dynamic(() => import("./OrderSettings/ViewOrderSettings"), { ssr: false });
 
 
 const Dashboard = () => {
@@ -116,14 +118,16 @@ const Dashboard = () => {
         "transactionOverview", "usersOverview", "dashboard", "leadOverview","createPaymentMethod",
         "paymentMethodOverview", "createCommunity", "communityOverview", "createAdvancePay", "advancePayOverview","createBanner", "bannerOverview", "createLandingPage","landingPageOverview",
         "trackingOverview",
-        "createUpsellProduct", "upsellProductOverview", "upsellSettings"
+        "createUpsellProduct", "upsellProductOverview", "upsellSettings",
+        "variationLibrary", "orderSettings"
       ],
       moderator: [
         // Moderator specific access
         "categoryOverview", "productOverview", "customerOverview", "createOrder", "dashboard",
         "createCategory", "createProduct", "contactOverview", "createSteadfast", "steadfastOverview",
         "leadOverview", "createCommunity", "communityOverview","createBanner", "bannerOverview",
-        "createUpsellProduct", "upsellProductOverview", "upsellSettings"
+        "createUpsellProduct", "upsellProductOverview", "upsellSettings",
+        "variationLibrary"
       ],
       user: ["dashboard"] // Basic user access
     };
@@ -250,6 +254,12 @@ const Dashboard = () => {
         return <ViewUpsellProducts onCreateNew={() => setSelectedMenu('createUpsellProduct')} />;
       case "upsellSettings":
         return <UpsellSettings />;
+
+      case "variationLibrary":
+        return <VariationLibrary />;
+
+      case "orderSettings":
+        return <ViewOrderSettings />;
 
       case "createOrder":
         return <CreateOrder onOrderCreated={() => setSelectedMenu('customerOverview')} />;

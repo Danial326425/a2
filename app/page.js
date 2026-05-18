@@ -8,21 +8,15 @@ import Category from "@/app/components/Category";
 import BannerSlider from "@/app/components/BannerSlider";
 
 import { ProductContext } from "@/app/context/ProductsContext";
-import { HeaderContext } from "@/app/context/HeaderContext";
 
 export default function Home() {
 
   const {
-    loading: productLoading,
+    loading,
     banners,
   } = useContext(ProductContext);
 
-  const {
-    loading: headerLoading,
-  } = useContext(HeaderContext);
-
-  // Loading Screen
-  if (productLoading || headerLoading) {
+  if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-white">
         <div className="h-12 w-12 animate-spin rounded-full border-b-4 border-t-4 border-green-500"></div>

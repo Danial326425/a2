@@ -67,6 +67,7 @@ const ViewCustomer = () => {
   const [showProductModal, setShowProductModal] = useState(false);
 
   const [pathaoData, setPathaoData] = useState({});
+  const [fraudThreshold, setFraudThreshold] = useState(0);
 
   // Status options for dropdown
   const statusOptions = [
@@ -94,7 +95,8 @@ const ViewCustomer = () => {
     { key: 'hold', label: 'Hold' },
     { key: 'blocked', label: 'Blocked' },
     { key: 'partial_delivered', label: 'Partial Delivered' },
-    { key: 'in_transit', label: 'In Transit' }
+    { key: 'in_transit', label: 'In Transit' },
+    { key: 'spam', label: '🚫 Spam' },
   ];
 
   // Bulk status update state
@@ -343,6 +345,8 @@ const ViewCustomer = () => {
           app.delivery_status &&
           app.delivery_status.toLowerCase() === 'partial delivered'
         );
+      case 'spam':
+        return apps.filter(app => !!app.is_spam || isSteadfastSpam(app.phone_number));
       default:
         return apps;
     }
@@ -368,7 +372,7 @@ const ViewCustomer = () => {
     // Update total pages when filtered results change
     setTotalPages(Math.ceil(filtered.length / itemsPerPage));
 
-  }, [activeTab, applications, orderStatuses]);
+  }, [activeTab, applications, orderStatuses, fraudDetails, fraudThreshold]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -847,6 +851,53 @@ const ViewCustomer = () => {
   };
 
   const currentItems = getCurrentPageItems();
+  const fraudRequestedRef = useRef(new Set());
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    axios
+      .get(`${apiUrl}/order-settings`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      .then(res => {
+        const v = parseFloat(res.data?.fraud_percentage_limit);
+        setFraudThreshold(Number.isFinite(v) ? v : 0);
+      })
+      .catch(() => setFraudThreshold(0));
+  }, []);
+
+  useEffect(() => {
+    if (!steadfast.apiKey || !steadfast.secretKey) return;
+    const start = (currentPage - 1) * itemsPerPage;
+    const visible = filteredApplications.slice(start, start + itemsPerPage);
+    visible.forEach((app, idx) => {
+      const phone = app.phone_number;
+      if (!phone || fraudRequestedRef.current.has(phone)) return;
+      fraudRequestedRef.current.add(phone);
+      setTimeout(() => checkFraudDetails(phone), idx * 250);
+    });
+  }, [currentPage, filteredApplications, steadfast.apiKey, steadfast.secretKey]);
+
+  useEffect(() => {
+    if (!steadfast.apiKey || !steadfast.secretKey || !applications.length) return;
+    const unique = [...new Set(applications.map(a => a.phone_number).filter(Boolean))];
+    const pending = unique.filter(p => !fraudRequestedRef.current.has(p));
+    pending.forEach((phone, idx) => {
+      fraudRequestedRef.current.add(phone);
+      setTimeout(() => checkFraudDetails(phone), 2500 + idx * 400);
+    });
+  }, [applications, steadfast.apiKey, steadfast.secretKey]);
+
+  const isSteadfastSpam = (phone) => {
+    if (!fraudThreshold || fraudThreshold <= 0) return false;
+    const d = fraudDetails[phone]?.data;
+    if (!d) return false;
+    const delivered = Number(d.total_delivered ?? 0);
+    const cancelled = Number(d.total_cancelled ?? 0);
+    const finalized = delivered + cancelled;
+    if (finalized < 3) return false;
+    return (delivered / finalized) * 100 < fraudThreshold;
+  };
 
   return (
     <div>
@@ -974,6 +1025,9 @@ const ViewCustomer = () => {
                     app.delivery_status === '' ||
                     app.delivery_status.toLowerCase() === 'new order';
                 }
+                if (tab.key === 'spam') {
+                  return !!app.is_spam || isSteadfastSpam(app.phone_number);
+                }
 
                 // Ready to Ship এবং Ready to Delivery এর জন্য সঠিক comparison
                 const expectedStatus = tab.key.replace(/_/g, ' ').toLowerCase();
@@ -1032,8 +1086,8 @@ const ViewCustomer = () => {
           selectAll={selectAll}
           handleSelectAllChange={handleSelectAllChange}
           fraudDetails={fraudDetails}
+          fraudThreshold={fraudThreshold}
           handleImageClick={handleImageClick}
-          checkFraudDetails={checkFraudDetails}
         />
       </div>
 

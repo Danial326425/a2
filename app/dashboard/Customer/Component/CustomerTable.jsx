@@ -2,14 +2,15 @@ import React from 'react';
 import CustomerRow from './CustomerRow';
 import Pagination from './Pagination';
 
-const CustomerTable = ({ 
+const CustomerTable = ({
   applications,
   fraudDetails,
-  currentItems, 
-  selectedApplications, 
-  handleCheckboxChange, 
-  handleEditClick, 
-  handlePrintClick, 
+  fraudThreshold,
+  currentItems,
+  selectedApplications,
+  handleCheckboxChange,
+  handleEditClick,
+  handlePrintClick,
   handleDeleteClick,
   handleAddPoints,
   getStatusColor,
@@ -23,7 +24,6 @@ const CustomerTable = ({
   selectAll,
   handleSelectAllChange,
   handleImageClick,
-  checkFraudDetails,
   onUpdateStatus
 }) => {
 
@@ -69,8 +69,8 @@ const CustomerTable = ({
               fetchStatusOnClick={fetchStatusOnClick}
               activeTab={activeTab}
               fraudDetails={fraudDetails}
+              fraudThreshold={fraudThreshold}
               handleImageClick={handleImageClick}
-              checkFraudDetails={checkFraudDetails}
               onUpdateStatus={onUpdateStatus}
 
             />
