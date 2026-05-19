@@ -23,17 +23,30 @@ const ViewPixel = () => {
     pixel_id: "", fb_access_token: "", test_event_code: "", is_purchase: true,
   });
 
+  // Pixel routes are auth:sanctum protected. Helper produces the Bearer
+  // header from the admin's stored token so every call (list / delete / update)
+  // authenticates correctly. Without this we get "Unauthenticated." 401s.
+  const authHeaders = () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   useEffect(() => {
-    axios.get(`${apiUrl}/pixels`)
+    axios.get(`${apiUrl}/pixels`, { headers: authHeaders() })
       .then(r => setPixels(r.data?.pixels || r.data || []))
-      .catch(() => setError("Failed to load pixels"))
+      .catch((err) => {
+        const status = err.response?.status;
+        setError(status === 401 || status === 403
+          ? "Session expired. Please log in again."
+          : "Failed to load pixels");
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await axios.delete(`${apiUrl}/pixeldelete/${deleteTarget}`);
+      await axios.delete(`${apiUrl}/pixeldelete/${deleteTarget}`, { headers: authHeaders() });
       setPixels(prev => prev.filter(p => p.id !== deleteTarget));
     } catch { setError("Failed to delete pixel"); }
     finally { setDeleteTarget(null); }
@@ -58,10 +71,15 @@ const ViewPixel = () => {
     e.preventDefault();
     if (!editingPixel) return;
     try {
-      await axios.put(`${apiUrl}/pixelsupdate/${editingPixel}`, formData);
+      await axios.put(`${apiUrl}/pixelsupdate/${editingPixel}`, formData, { headers: authHeaders() });
       setPixels(prev => prev.map(p => p.id === editingPixel ? { ...p, ...formData } : p));
       setEditingPixel(null);
-    } catch (err) { setError(err.response?.data?.message || "Failed to update pixel"); }
+    } catch (err) {
+      const status = err.response?.status;
+      setError(status === 401 || status === 403
+        ? "Session expired. Please log in again."
+        : (err.response?.data?.message || "Failed to update pixel"));
+    }
   };
 
   const truncate = (str, n = 28) => str && str.length > n ? str.slice(0, n) + "…" : str;

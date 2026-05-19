@@ -4,10 +4,10 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { config } from "../../../config";
 import UpdateUser from "./UpdateUser";
-import { UserCog, Pencil, Trash2, Phone, Mail, Coins, Shield } from "lucide-react";
+import { UserCog, Pencil, Trash2, Phone, Mail, Coins, Shield, CheckCircle2, Clock } from "lucide-react";
 import {
   PageHeader, SectionCard, ActionBtn, Badge, Table, THead, TH,
-  TBody, TR, TD, TableSkeleton, EmptyState, ErrorBanner, ConfirmDialog, SearchInput
+  TBody, TR, TD, TableSkeleton, EmptyState, ErrorBanner, ConfirmDialog, SearchInput, TabBar
 } from "../../components/Dashboard/DashUI";
 import { motion } from "framer-motion";
 
@@ -16,6 +16,7 @@ const apiUrl = config.apiUrl;
 const roleBadge = (type) => {
   if (type === "admin")     return { variant: "purple",  label: "Admin" };
   if (type === "moderator") return { variant: "indigo",  label: "Moderator" };
+  if (type === "guest")     return { variant: "warning", label: "Pending" };
   return                           { variant: "gray",    label: "User" };
 };
 
@@ -27,6 +28,8 @@ const ViewUser = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState("all");
+  const [approving, setApproving] = useState({});
   const [formData, setFormData] = useState({ name: "", phone: "", type: "user", points: 0 });
 
   useEffect(() => {
@@ -59,6 +62,19 @@ const ViewUser = () => {
     }
   };
 
+  const handleApprove = async (user) => {
+    if (user.type !== "guest") return;
+    setApproving((p) => ({ ...p, [user.id]: true }));
+    try {
+      await axios.post(`${apiUrl}/users/${user.id}/approve`);
+      setUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, type: "user" } : u));
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to approve user");
+    } finally {
+      setApproving((p) => ({ ...p, [user.id]: false }));
+    }
+  };
+
   const handleEdit = (user) => {
     if (user.type === "admin") { alert("Admin users cannot be edited"); return; }
     setEditingUser(user.id);
@@ -85,7 +101,16 @@ const ViewUser = () => {
     }
   };
 
+  const pendingCount = users.filter(u => u.type === "guest").length;
+  const tabs = [
+    { key: "all",     label: "All Users", count: users.length },
+    { key: "pending", label: "Pending",   count: pendingCount, icon: Clock },
+    { key: "active",  label: "Active",    count: users.filter(u => u.type !== "guest").length },
+  ];
+
   const filtered = users.filter(u => {
+    if (tab === "pending" && u.type !== "guest") return false;
+    if (tab === "active"  && u.type === "guest") return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return u.name?.toLowerCase().includes(q) || u.phone?.includes(q) || u.email?.toLowerCase().includes(q);
@@ -102,9 +127,29 @@ const ViewUser = () => {
 
       <ErrorBanner message={error} />
 
+      {pendingCount > 0 && tab !== "pending" && (
+        <div
+          role="alert"
+          className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200"
+        >
+          <div className="flex items-center gap-2.5 text-sm text-amber-800">
+            <Clock size={15} />
+            <span><strong>{pendingCount}</strong> registration{pendingCount > 1 ? "s" : ""} awaiting approval</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTab("pending")}
+            className="text-xs font-semibold text-amber-700 hover:text-amber-900"
+          >
+            Review →
+          </button>
+        </div>
+      )}
+
       <SectionCard noPad>
-        {/* Search toolbar */}
-        <div className="p-4 border-b border-gray-100">
+        {/* Tabs + Search toolbar */}
+        <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <TabBar tabs={tabs} active={tab} onChange={setTab} />
           <SearchInput
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -183,6 +228,16 @@ const ViewUser = () => {
                     <TD className="text-right">
                       {!isAdmin ? (
                         <div className="flex items-center justify-end gap-1.5">
+                          {user.type === "guest" && (
+                            <ActionBtn
+                              variant="success" size="sm" icon={CheckCircle2}
+                              onClick={() => handleApprove(user)}
+                              loading={!!approving[user.id]}
+                              title="Approve registration"
+                            >
+                              Approve
+                            </ActionBtn>
+                          )}
                           <ActionBtn
                             variant="ghost" size="sm" icon={Pencil}
                             onClick={() => handleEdit(user)} title="Edit"
@@ -192,7 +247,7 @@ const ViewUser = () => {
                             onClick={() => setDeleteTarget(user.id)}
                             className="text-red-500 hover:text-red-700 hover:bg-red-50"
                             disabled={deleteLoading}
-                            title="Delete"
+                            title={user.type === "guest" ? "Reject registration" : "Delete"}
                           />
                         </div>
                       ) : (

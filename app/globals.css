@@ -19,10 +19,30 @@
   }
 }
 
+/* Global horizontal overflow guard — prevents rogue elements (decorative
+   blobs, wide carousels, tables, embeds) from pushing the page past the
+   viewport. `overflow-x: clip` is preferred when supported because it does
+   NOT create a scroll container (so position:fixed children behave normally);
+   `overflow-x: hidden` is the fallback for older browsers. */
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+/* Any direct descendant of <body> also clipped — covers Next.js root wrappers
+   that sometimes sit on top of body and bypass the body-level clip. */
+body > * {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* Prevent horizontal scroll caused by sub-pixel rounding or transforms */
+  position: relative;
 }
 
 button:not(:disabled),

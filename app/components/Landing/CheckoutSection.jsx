@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { OrderContext } from "../../context/OrderContext";
 import { ProductContext } from "../../context/ProductsContext";
 import bdLocations from "../../data/locations";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { trackBrowserEvent, sendCAPIEvent, generateEventId } from "@/pixel";
 import { track } from "../../lib/tracking";
 import DeliveryCharge from "./DeliveryCharge";
+import CouponBox from "../CouponBox";
 import {
   ShoppingCart, Phone, User, MapPin, Map, Building2, CheckCircle2,
   Truck, Shield, RotateCcw, Star, Zap, Package,
@@ -107,6 +108,8 @@ const QtyBtn = ({ onClick, children, disabled }) => {
 // CheckoutSection
 // ══════════════════════════════════════════════════════════════════════════════
 const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
+  const router = useRouter();
+
   // ── Contexts ────────────────────────────────────────────────────────────────
   const {
     apiUrl, imageUrl,
@@ -125,7 +128,17 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
   const [price, setPrice]                           = useState(0);
   const [selectedDeliveryCharge, setSelectedDeliveryCharge] = useState(0);
   const [deliveryArea, setDeliveryArea]             = useState([]);
+  // Applied coupon — { code, type, discount, free_delivery } or null
+  const [appliedCoupon, setAppliedCoupon]           = useState(null);
   const [qty, setQty]                               = useState(1);
+  // Fresh product fetched directly from /products/{slug} — bypasses the
+  // 5-min landing-page cache so free_delivery_enabled / free_delivery_min_qty
+  // / category.free_delivery are always up to date (matches what OrderPageClient
+  // sees). Falls back to `data.product` until it loads.
+  const [freshProduct, setFreshProduct]             = useState(null);
+  // Global order settings + inline submit error — same UX as OrderPageClient
+  const [orderSettings, setOrderSettings]           = useState(null);
+  const [submitError, setSubmitError]               = useState(null);
   const [bumps, setBumps]                           = useState([]);
   const [selectedBumps, setSelectedBumps]           = useState([]);
   const [selectedBulkDiscount, setSelectedBulkDiscount] = useState(null);
@@ -165,29 +178,71 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
     return 0;
   }, [price, qty, selectedBulkDiscount]);
 
-  const subtotal  = Math.round(price * qty - bulkDiscountAmount);
-  const total     = Math.round(subtotal + Number(selectedDeliveryCharge || 0) + bumpPriceTotal);
+  // ── Order-total pipeline (mirrors OrderPageClient.js) ──────────────────
+  // Pipeline:
+  //   1) subtotalNoDelivery = (price × qty) − bulkDiscount + bumps
+  //   2) couponDiscount     = applied if coupon is amount-type, not free-delivery
+  //   3) isFreeDelivery     = product bulk / category / coupon any one matches
+  //   4) effectiveDelivery  = 0 when free, else the picked zone's charge
+  //   5) finalTotal         = subtotalNoDelivery + effectiveDelivery − couponDiscount
+  //
+  // Note: computed from primitives so we never depend on whether a prior
+  // `totalPrice` value happened to include delivery in a given render.
+
+  const subtotalNoDelivery = Math.max(0, Math.round(price * qty - bulkDiscountAmount + bumpPriceTotal));
+
+  const couponDiscount = appliedCoupon && !appliedCoupon.free_delivery
+    ? Math.round(Number(appliedCoupon.discount || 0))
+    : 0;
+  const couponFreeShipping = !!appliedCoupon?.free_delivery;
+
+  // Mirror backend DeliveryService — three ways to qualify for free delivery:
+  //   1) product.free_delivery_enabled && qty >= product.free_delivery_min_qty
+  //   2) any product category has free_delivery = true
+  //   3) coupon is free_delivery type
+  // Source of truth = `freshProduct` (uncached /products/{slug}); falls back to
+  // landing-page payload until it loads. This matches OrderPageClient exactly.
+  const effectiveProduct = freshProduct || data?.product;
+
+  const productFreeShip = useMemo(() => {
+    const enabled = !!effectiveProduct?.free_delivery_enabled;
+    const minQty  = Number(effectiveProduct?.free_delivery_min_qty || 0);
+    const qNum    = Number(qty || 0);
+    return enabled && minQty > 0 && qNum >= minQty;
+  }, [effectiveProduct?.free_delivery_enabled, effectiveProduct?.free_delivery_min_qty, qty]);
+
+  const categoryFreeShip = useMemo(
+    () => (effectiveProduct?.categories || []).some((c) => !!c.free_delivery),
+    [effectiveProduct?.categories]
+  );
+
+  const isFreeDelivery = couponFreeShipping || productFreeShip || categoryFreeShip;
+  const freeShipReason = couponFreeShipping
+    ? 'কুপন'
+    : (productFreeShip ? 'Bulk Purchase' : (categoryFreeShip ? 'Category Free' : null));
+
+  const effectiveDelivery = isFreeDelivery ? 0 : Number(selectedDeliveryCharge || 0);
+  const total = Math.max(0, Math.round(subtotalNoDelivery + effectiveDelivery - couponDiscount));
+
+  // Back-compat alias (used in existing breakdown row labels)
+  const subtotal = Math.round(price * qty - bulkDiscountAmount);
 
   // ── Fetch landing page data + delivery charges in parallel ──────────────────
   useEffect(() => {
     let cancelled = false;
     const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
-    console.log('API_BASE:', API_BASE);
-
     (async () => {
       try {
         setLoading(true);
 
-        // Fetch landing page
-        const pageResponse = await fetch(`${API_BASE}/landing-pages/offer/${slug}`);
-        const pageRes = await pageResponse.json();
-        console.log('Page response:', pageRes);
-
-        // Fetch delivery charges
-        const chargesResponse = await fetch(`${API_BASE}/deliverycharges`);
+        // Fetch landing page + delivery charges in parallel
+        const [pageResponse, chargesResponse] = await Promise.all([
+          fetch(`${API_BASE}/landing-pages/offer/${slug}`),
+          fetch(`${API_BASE}/deliverycharges`),
+        ]);
+        const pageRes    = await pageResponse.json();
         const chargesRes = await chargesResponse.json();
-        console.log('Charges response:', chargesRes);
 
         if (cancelled) return;
 
@@ -202,10 +257,8 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
         } else if (chargesRes?.data && Array.isArray(chargesRes.data)) {
           areas = chargesRes.data;
         }
-        console.log('Setting delivery areas:', areas);
         setDeliveryArea(areas);
-      } catch (err) {
-        console.error('Fetch error:', err);
+      } catch {
         if (!cancelled) setError('ডেটা লোড করতে সমস্যা হয়েছে।');
       } finally {
         if (!cancelled) setLoading(false);
@@ -213,6 +266,76 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
     })();
     return () => { cancelled = true; };
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── sessionStorage draft persistence (per slug, tab-life only) ─────────────
+  // Saves variant + qty (and name/phone/address from OrderContext) so a
+  // back-nav from /upsell or /thankyou doesn't wipe the customer's selection.
+  const draftKey = useMemo(() => slug ? `landing-draft-v1:${slug}` : null, [slug]);
+
+  useEffect(() => {
+    if (!draftKey || typeof window === 'undefined') return;
+    try {
+      const raw = sessionStorage.getItem(draftKey);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d?.qty)                setQty(d.qty);
+      if (d?.selectedColor)      setSelectedColor(d.selectedColor);
+      if (d?.selectedSize)       setSelectedSize(d.selectedSize);
+      if (d?.selectedSingleSize) setSelectedSingleSize(d.selectedSingleSize);
+    } catch { /* corrupted draft — ignore */ }
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftKey || typeof window === 'undefined') return;
+    const t = setTimeout(() => {
+      try {
+        sessionStorage.setItem(draftKey, JSON.stringify({
+          qty, selectedColor, selectedSize, selectedSingleSize,
+        }));
+      } catch {}
+    }, 400);
+    return () => clearTimeout(t);
+  }, [draftKey, qty, selectedColor, selectedSize, selectedSingleSize]);
+
+  // ── Order settings (global quantity / IP limits) ──────────────────────────
+  useEffect(() => {
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    let cancelled = false;
+    fetch(`${API_BASE}/order-settings`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => { if (!cancelled && s) setOrderSettings(s); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // Resolve effective max qty: product.max_per_order ?? global_max_per_order,
+  // null when quantity_limit_enabled is OFF. Matches OrderPageClient logic.
+  const effectiveMaxQty = useMemo(() => {
+    if (!orderSettings?.quantity_limit_enabled) return null;
+    const productCap = Number(effectiveProduct?.max_per_order);
+    if (Number.isFinite(productCap) && productCap > 0) return productCap;
+    const globalCap = Number(orderSettings?.global_max_per_order);
+    return Number.isFinite(globalCap) && globalCap > 0 ? globalCap : null;
+  }, [orderSettings, effectiveProduct?.max_per_order]);
+
+  const qtyAtMax = effectiveMaxQty !== null && Number(qty) >= effectiveMaxQty;
+
+  // ── Fetch fresh product (uncached) for live free-delivery flags ────────────
+  // The landing-page endpoint is cached for 5 min; product toggles like
+  // free_delivery_enabled / free_delivery_min_qty / category.free_delivery may
+  // be stale there. /products/{slug} has no server-side cache so it always
+  // reflects current dashboard state — same source OrderPageClient uses.
+  useEffect(() => {
+    const productSlug = data?.product?.slug;
+    if (!productSlug) return;
+    let cancelled = false;
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    fetch(`${API_BASE}/products/${productSlug}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p) => { if (!cancelled && p) setFreshProduct(p); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [data?.product?.slug]);
 
   // ── Populate bumps from product ──────────────────────────────────────────────
   useEffect(() => {
@@ -361,7 +484,7 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
     customer_name:    name,
     phone_number:     phone,
     customer_address: `Village/Road: ${address}, District: ${selectedDistrictName}, Division: ${selectedDivisionName}`,
-    delivery_charge:  String(Math.round(selectedDeliveryCharge || 0)),
+    delivery_charge:  String(Math.round(effectiveDelivery || 0)),
     total:            String(total),
     payment_method:   'cod',
     delivery_note:    deliveryNote,
@@ -377,9 +500,10 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
     bulk_discounts: selectedBulkDiscount ? [{ id: selectedBulkDiscount.id }] : [],
     product_price:  String(Math.round((data?.product?.discount_price ?? data?.product?.price ?? 0) * qty)),
     quantity:       qty || 1,
+    coupon_code:    appliedCoupon?.code || null,
   }), [orderId, data?.product, name, phone, address, selectedDistrictName, selectedDivisionName,
-       selectedDeliveryCharge, total, deliveryNote, qty, selectedColor, selectedSize,
-       selectedBumps, selectedBulkDiscount]); // eslint-disable-line react-hooks/exhaustive-deps
+       effectiveDelivery, total, deliveryNote, qty, selectedColor, selectedSize,
+       selectedBumps, selectedBulkDiscount, appliedCoupon]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOrderConfirm = async (e) => {
     e?.preventDefault?.();
@@ -402,11 +526,28 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
     if (submitLockRef.current) return;
     submitLockRef.current = true;
 
+    // Pre-flight IP-quota check so we never enter Processing… for a request
+    // the backend will reject with 429. Alert immediately if reached.
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    try {
+      const qr = await fetch(`${API_BASE}/order-settings/quota`, { cache: 'no-store' });
+      if (qr.ok) {
+        const q = await qr.json();
+        if (q?.reached) {
+          const msg = `আপনার অর্ডার লিমিট শেষ। আপনি গত ২৪ ঘণ্টায় সর্বোচ্চ ${q.limit}টি অর্ডার করেছেন। আজ আর অর্ডার করা যাবে না।`;
+          setSubmitError(msg);
+          alert(msg);
+          submitLockRef.current = false;
+          return;
+        }
+      }
+    } catch { /* best-effort; fall through to actual submit */ }
+
     fireInitiateCheckout();
     setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
       const res = await fetch(`${API_BASE}/customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -414,11 +555,30 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
       });
       if (res.ok) {
         track('order', slug);
-        window.location.href = `/upsell/${orderId}`;
+        // Wipe the per-slug draft + global checkout draft so back-nav doesn't
+        // resurrect already-submitted data.
+        try {
+          if (draftKey) sessionStorage.removeItem(draftKey);
+          sessionStorage.removeItem('checkout-draft-v1');
+        } catch {}
+        router.push(`/upsell/${orderId}`);
         return;
       }
+      // Read error response so customer sees WHY it failed (e.g. IP limit).
+      let body = null;
+      try { body = await res.json(); } catch {}
+      let msg = body?.message || 'অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।';
+      if (res.status === 429) {
+        // IP daily limit
+        msg = body?.errors?.ip_address?.[0] || body?.message || 'আপনার অর্ডার লিমিট শেষ। আজ আর অর্ডার করা যাবে না।';
+      } else if (res.status === 422 && body?.errors) {
+        msg = Object.values(body.errors).flat()[0] || msg;
+      }
+      setSubmitError(msg);
+      alert(msg);
     } catch (err) {
       const msg = err?.message || 'অর্ডার সম্পন্ন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।';
+      setSubmitError(msg);
       alert(msg);
     }
 
@@ -658,11 +818,18 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
                         <button
                           type="button"
                           onClick={() => handleQtyChange(qty + 1)}
-                          className="w-9 h-9 flex items-center justify-center rounded-lg border-2 border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 active:scale-90 transition-all"
+                          disabled={qtyAtMax}
+                          title={qtyAtMax ? `সর্বোচ্চ ${effectiveMaxQty}টি অর্ডার করা যাবে` : undefined}
+                          className="w-9 h-9 flex items-center justify-center rounded-lg border-2 border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 active:scale-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-transparent"
                         >
                           <Plus size={14} />
                         </button>
                       </div>
+                      {qtyAtMax && (
+                        <p className="mt-1.5 text-[11px] text-amber-700 font-medium">
+                          সর্বোচ্চ <strong>{effectiveMaxQty}টি</strong> অর্ডার করা যাবে
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -746,15 +913,57 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
 
               {/* Delivery + Order Summary */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                <h3 className="font-bold text-gray-900 text-base mb-4 flex items-center gap-2">
-                  <Truck size={17} className="text-emerald-600" />
-                  ডেলিভারি এলাকা
-                </h3>
-                <DeliveryCharge
-                  handleDeliveryChange={handleDeliveryChange}
-                  deliveryArea={deliveryArea}
-                  setSelectedDeliveryCharge={setSelectedDeliveryCharge}
+                {/* Coupon code — applies discount or free delivery */}
+                <CouponBox
+                  apiUrl={apiUrl}
+                  items={[{
+                    product_id: data?.product?.id,
+                    quantity: qty,
+                    price: price,
+                  }]}
+                  phone={phone}
+                  coupon={appliedCoupon}
+                  onApply={setAppliedCoupon}
+                  onRemove={() => setAppliedCoupon(null)}
+                  className="mb-5"
                 />
+
+                {/* Dev hint: surfaces backend payload so we can see at a glance
+                    whether free-delivery fields actually reach the page. Only
+                    visible when ?debug=1 is in the URL. */}
+                {typeof window !== 'undefined' && window.location.search.includes('debug=1') && (
+                  <pre className="mb-3 text-[10px] bg-gray-900 text-gray-100 p-2 rounded overflow-x-auto">
+                    {JSON.stringify({
+                      qty,
+                      source: freshProduct ? '/products/{slug} (fresh)' : '/landing-pages/offer (cached)',
+                      enabled: effectiveProduct?.free_delivery_enabled,
+                      min_qty: effectiveProduct?.free_delivery_min_qty,
+                      categories: (effectiveProduct?.categories || []).map(c => ({ id: c.id, free: !!c.free_delivery })),
+                      productFreeShip,
+                      categoryFreeShip,
+                      couponFreeShipping,
+                      isFreeDelivery,
+                    }, null, 2)}
+                  </pre>
+                )}
+
+                {/* Delivery zone selector — hidden when any free-delivery rule
+                    applies (bulk qty / category / coupon). Show a confirmation
+                    banner instead so the customer knows shipping is free. */}
+                {!isFreeDelivery ? (
+                  <DeliveryCharge
+                    handleDeliveryChange={handleDeliveryChange}
+                    deliveryArea={deliveryArea}
+                    setSelectedDeliveryCharge={setSelectedDeliveryCharge}
+                  />
+                ) : (
+                  <div className="mb-4 rounded-lg bg-green-50 border border-green-200 px-3 py-2.5 text-sm text-green-700 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                    <span>
+                      এই অর্ডারে <strong>ফ্রি ডেলিভারি</strong> ({freeShipReason}) — কোনো ডেলিভারি চার্জ যোগ হবে না।
+                    </span>
+                  </div>
+                )}
 
                 {/* Price Breakdown */}
                 <div className="border-t border-gray-100 pt-4 mt-2 space-y-3">
@@ -792,19 +1001,33 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
                     </div>
                   ))}
 
+                  {/* Coupon discount */}
+                  {appliedCoupon && !appliedCoupon.free_delivery && couponDiscount > 0 && (
+                    <div className="flex justify-between items-center bg-emerald-50 -mx-2 px-2 py-2 rounded-lg border border-emerald-100">
+                      <span className="text-sm text-emerald-700 font-medium">
+                        কুপন ছাড় ({appliedCoupon.code})
+                      </span>
+                      <span className="text-emerald-600 font-bold whitespace-nowrap">
+                        − ৳{couponDiscount}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Delivery charge */}
                   <div className="flex justify-between items-center">
                     <span className="flex items-center gap-2 text-sm text-gray-600">
                       <Truck size={14} className="text-gray-400" />
                       ডেলিভারি চার্জ
                     </span>
-                    <span className={cls("font-semibold", selectedDeliveryCharge === 0 ? "text-green-600" : "text-gray-800")}>
-                      {selectedDeliveryCharge === 0 ? (
+                    <span className={cls("font-semibold", effectiveDelivery === 0 ? "text-green-600" : "text-gray-800")}>
+                      {effectiveDelivery === 0 ? (
                         <span className="flex items-center gap-1">
-                          <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">ফ্রি</span>
+                          <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">
+                            {freeShipReason ? `ফ্রি (${freeShipReason})` : 'ফ্রি'}
+                          </span>
                         </span>
                       ) : (
-                        `৳${Math.round(selectedDeliveryCharge)}`
+                        `৳${Math.round(effectiveDelivery)}`
                       )}
                     </span>
                   </div>
@@ -1061,16 +1284,31 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
                         <span>ডিসকাউন্ট</span><span className="font-semibold">−৳{bulkDiscountAmount}</span>
                       </div>
                     )}
+                    {appliedCoupon && !appliedCoupon.free_delivery && couponDiscount > 0 && (
+                      <div className="flex justify-between text-xs text-emerald-600">
+                        <span>কুপন ({appliedCoupon.code})</span>
+                        <span className="font-semibold">−৳{couponDiscount}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-xs text-gray-500">
                       <span>ডেলিভারি</span>
                       <span className="font-semibold text-gray-700">
-                        {selectedDeliveryCharge === 0 ? 'ফ্রি' : `৳${Math.round(selectedDeliveryCharge)}`}
+                        {effectiveDelivery === 0
+                          ? (freeShipReason ? `ফ্রি (${freeShipReason})` : 'ফ্রি')
+                          : `৳${Math.round(effectiveDelivery)}`}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm font-extrabold text-gray-900 border-t border-gray-200 pt-1.5">
                       <span>মোট</span><span className="text-emerald-600">৳{total}</span>
                     </div>
                   </div>
+
+                  {/* Inline submit error (IP limit, validation, etc.) */}
+                  {submitError && (
+                    <div role="alert" className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                      {submitError}
+                    </div>
+                  )}
 
                   {/* Submit Button */}
                   <div className="relative">

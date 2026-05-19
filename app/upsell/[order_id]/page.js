@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useContext } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { config } from "@/config";
 import { ProductContext } from "@/app/context/ProductsContext";
 import {
@@ -54,10 +54,11 @@ function LoadingSpinner() {
 }
 
 function AlreadyHandled({ status, orderId }) {
+  const router = useRouter();
   useEffect(() => {
-    const t = setTimeout(() => { window.location.href = `/thankyou/${orderId}`; }, 2000);
+    const t = setTimeout(() => { router.replace(`/thankyou/${orderId}`); }, 2000);
     return () => clearTimeout(t);
-  }, [orderId]);
+  }, [orderId, router]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
@@ -72,6 +73,7 @@ function AlreadyHandled({ status, orderId }) {
 
 export default function UpsellPage() {
   const { order_id } = useParams();
+  const router = useRouter();
   const { pixel, testEventCode, apiUrl } = useContext(ProductContext);
 
   const [pageState, setPageState] = useState({
@@ -94,8 +96,8 @@ export default function UpsellPage() {
         const data = await res.json();
 
         if (!res.ok) {
-          // No upsell or not found → skip to thankyou
-          window.location.href = `/thankyou/${order_id}`;
+          // No upsell or not found → skip to thankyou (soft nav keeps context alive)
+          router.replace(`/thankyou/${order_id}`);
           return;
         }
 
@@ -105,7 +107,7 @@ export default function UpsellPage() {
         }
 
         if (!data.upsell_product) {
-          window.location.href = `/thankyou/${order_id}`;
+          router.replace(`/thankyou/${order_id}`);
           return;
         }
 
@@ -119,12 +121,12 @@ export default function UpsellPage() {
       })
       .catch((err) => {
         if (err.name !== "AbortError") {
-          window.location.href = `/thankyou/${order_id}`;
+          router.replace(`/thankyou/${order_id}`);
         }
       });
 
     return () => abortRef.current?.abort();
-  }, [order_id]);
+  }, [order_id, router]);
 
   // ── AddPaymentInfo (hybrid: browser pixel + CAPI) ──────────────────────────
   // Fires once when upsell page is rendered with a pending offer.
@@ -208,15 +210,15 @@ export default function UpsellPage() {
     try {
       await fetch(`${config.apiUrl}/upsell/${order_id}/accept`, { method: "POST" });
     } catch { /* always redirect */ }
-    window.location.href = `/thankyou/${order_id}`;
-  }, [order_id, pageState, pixel, apiUrl, testEventCode]);
+    router.push(`/thankyou/${order_id}`);
+  }, [order_id, pageState, pixel, apiUrl, testEventCode, router]);
 
   const handleDecline = useCallback(async () => {
     try {
       await fetch(`${config.apiUrl}/upsell/${order_id}/decline`, { method: "POST" });
     } catch { /* always redirect */ }
-    window.location.href = `/thankyou/${order_id}`;
-  }, [order_id]);
+    router.push(`/thankyou/${order_id}`);
+  }, [order_id, router]);
 
   const { loading, product, pageConfig: cfg, upsellStatus } = pageState;
 

@@ -32,6 +32,7 @@ import {
   Plus,
   List,
   Tag,
+  Ticket,
   FileText,
   PanelLeftClose,
   PanelLeft,
@@ -195,6 +196,41 @@ const MENU_GROUPS = [
     ],
   },
   {
+    label: "Promotions",
+    items: [
+      {
+        title: "Coupons",
+        icon: Ticket,
+        key: "coupons",
+        subMenus: [
+          {
+            title: "Coupons",
+            key: "couponsSub",
+            subItems: [
+              { name: "Add Coupon", key: "createCoupon" },
+              { name: "View Coupons", key: "couponOverview" },
+            ],
+          },
+        ],
+      },
+      {
+        title: "Cart Rewards",
+        icon: Gift,
+        key: "cartRewards",
+        subMenus: [
+          {
+            title: "Cart Reward Tiers",
+            key: "cartRewardsSub",
+            subItems: [
+              { name: "Add Tier", key: "createCartReward" },
+              { name: "View Tiers", key: "cartRewardOverview" },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
     label: "Operations",
     items: [
       {
@@ -250,19 +286,24 @@ const MENU_GROUPS = [
             ],
           },
           {
-            title: "Contact",
-            key: "contact",
+            title: "Contact Us",
+            key: "contactUs",
             subItems: [
-              { name: "Add Contact", key: "createContact" },
-              { name: "View Contacts", key: "contactOverview" },
+              { name: "Contact Us", key: "contactUsOverview" },
             ],
           },
           {
-            title: "Contact Info",
-            key: "contactInfo",
+            title: "About Us",
+            key: "aboutUs",
             subItems: [
-              { name: "Add Contact Info", key: "createContactInfo" },
-              { name: "View Contact Info", key: "contactInfoOverview" },
+              { name: "About Us", key: "aboutOverview" },
+            ],
+          },
+          {
+            title: "Footer",
+            key: "footerSettings",
+            subItems: [
+              { name: "Copyright Text", key: "footerOverview" },
             ],
           },
           {
@@ -325,8 +366,9 @@ const ROLE_ACCESS = {
       logo: ["createLogo", "logoOverview"],
       banner: ["createBanner", "bannerOverview"],
       community: ["createCommunity", "communityOverview"],
-      contact: ["createContact", "contactOverview"],
-      contactInfo: ["createContactInfo", "contactInfoOverview"],
+      contactUs: ["contactUsOverview"],
+      aboutUs: ["aboutOverview"],
+      footerSettings: ["footerOverview"],
       social: ["createSocial", "socialOverview"],
       legal: ["createLegal", "legalOverview"],
     },
@@ -337,6 +379,8 @@ const ROLE_ACCESS = {
     },
     pixel: { pixelSub: ["createPixel", "PixelOverview"] },
     ownTracking: ["trackingOverview"],
+    coupons: { couponsSub: ["createCoupon", "couponOverview"] },
+    cartRewards: { cartRewardsSub: ["createCartReward", "cartRewardOverview"] },
     steadfast: { steadfastSub: ["createSteadfast", "steadfastOverview"] },
     users: ["usersOverview"],
     orderSettings: ["orderSettings"],
@@ -357,7 +401,7 @@ const ROLE_ACCESS = {
     siteManagement: {
       banner: ["createBanner", "bannerOverview"],
       community: ["createCommunity", "communityOverview"],
-      contact: ["createContact", "contactOverview"],
+      contactUs: ["contactUsOverview"],
     },
     payments: {
       advancePay: ["createAdvancePay", "advancePayOverview"],

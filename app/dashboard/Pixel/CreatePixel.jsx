@@ -29,12 +29,22 @@ const CreatePixel = ({ onPixelCreated }) => {
     setSubmitting(true);
     setError(null);
     try {
-      await axios.post(`${apiUrl}/pixels`, formData);
+      // Pixel routes are auth:sanctum protected (they hold Meta access tokens).
+      // Bearer token comes from the admin login stored in localStorage.
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      await axios.post(`${apiUrl}/pixels`, formData, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       setSuccess("Facebook Pixel created!");
       setFormData({ pixel_id: "", fb_access_token: "", test_event_code: "", is_purchase: true });
       setTimeout(() => { setSuccess(null); if (onPixelCreated) onPixelCreated(); }, 1200);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to create pixel");
+      const status = err.response?.status;
+      if (status === 401 || status === 403) {
+        setError("Session expired. Please log in again.");
+      } else {
+        setError(err.response?.data?.message || "Failed to create pixel");
+      }
     } finally { setSubmitting(false); }
   };
 

@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
-  FaUser,
   FaHeadset,
   FaPhoneAlt,
   FaEnvelope,
@@ -34,90 +32,10 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [categoryOpen, setCategoryOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [phone, setPhone] = useState('');
-  const [user, setUser] = useState(null);
-  const [loginError, setLoginError] = useState('');
-  const router = useRouter();
 
   const clearSearch = () => {
     setSearchText('');
     setShowResults(false);
-  };
-
-  useEffect(() => {
-    const checkLoggedInUser = async () => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        try {
-          const response = await fetch(`${config.apiUrl}/user`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data);
-          } else {
-            localStorage.removeItem('authToken');
-          }
-        } catch {
-          localStorage.removeItem('authToken');
-        }
-      }
-    };
-    checkLoggedInUser();
-  }, []);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoginError('');
-
-    if (!phone.match(/^01[3-9]\d{8}$/)) {
-      setLoginError('সঠিক মোবাইল নম্বর দিন (১১ ডিজিট, 01 দিয়ে শুরু)');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${config.apiUrl}/userlogin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      });
-      const data = await response.json();
-
-      if (data.user) {
-        setUser(data.user);
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('phone', phone);
-        setLoginOpen(false);
-        router.refresh();
-      } else {
-        setLoginError('লগইন সফল হয়নি');
-      }
-    } catch {
-      setLoginError('লগইনে সমস্যা হয়েছে, পরে চেষ্টা করুন');
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        await fetch(`${config.apiUrl}/logout`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-    } catch {
-      // ignore error
-    } finally {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('token');
-      localStorage.removeItem('phone');
-      setUser(null);
-      setPhone('');
-      setLoginOpen(false);
-      router.refresh();
-    }
   };
 
   if (error) {
@@ -173,6 +91,8 @@ export default function Header() {
                   width={40}
                   height={40}
                   className="h-10 w-auto"
+                  priority
+                  sizes="40px"
                 />
               </Link>
 
@@ -183,12 +103,13 @@ export default function Header() {
                 >
                   <FaSearch />
                 </button>
-                <button
+                <Link
+                  href="/contact"
                   className="text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
-                  onClick={() => setLoginOpen(true)}
+                  aria-label="Contact"
                 >
-                  <FaUser />
-                </button>
+                  <FaHeadset />
+                </Link>
               </div>
             </div>
 
@@ -201,6 +122,8 @@ export default function Header() {
                   width={48}
                   height={48}
                   className="h-12 w-auto"
+                  priority
+                  sizes="48px"
                 />
               </Link>
 
@@ -240,18 +163,6 @@ export default function Header() {
 
               {/* User Actions */}
               <div className="flex items-center space-x-4">
-                <button
-                  className="flex items-center text-gray-700 hover:text-green-600 transition-colors group"
-                  onClick={() => setLoginOpen(true)}
-                >
-                  <div className="relative p-2 group-hover:bg-green-50 rounded-full">
-                    <FaUser className="text-lg" />
-                  </div>
-                  <span className="ml-2 hidden lg:inline-block">
-                    {user ? user.name : 'Account'}
-                  </span>
-                </button>
-
                 <Link
                   href="/contact"
                   className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
@@ -415,90 +326,8 @@ export default function Header() {
           </div>
         )}
 
-        {/* Login Modal */}
-        {loginOpen && <LoginModal user={user} phone={phone} setPhone={setPhone} loginError={loginError} handleLogin={handleLogin} handleLogout={handleLogout} onClose={() => { setLoginOpen(false); setLoginError(''); setPhone(''); }} />}
       </header>
     </>
   );
 }
 
-function LoginModal({ user, phone, setPhone, loginError, handleLogin, handleLogout, onClose }) {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div className="flex justify-between items-center p-5 border-b">
-          <h3 className="text-xl font-semibold">
-            {user ? 'My Account' : 'Login'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
-          >
-            <FaTimes />
-          </button>
-        </div>
-
-        <div className="p-5">
-          {!user ? (
-            <form onSubmit={handleLogin}>
-              <div className="mb-5">
-                <label className="block text-gray-700 mb-2 font-medium">
-                  মোবাইল নম্বর
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="01XXXXXXXXX"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  required
-                />
-                {loginError && (
-                  <p className="text-red-500 text-sm mt-2 flex items-center">
-                    <svg
-                      className="w-4 h-4 mr-1"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    {loginError}
-                  </p>
-                )}
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-medium shadow-md"
-              >
-                লগইন
-              </button>
-            </form>
-          ) : (
-            <div>
-              <div className="flex items-start mb-6">
-                <div className="bg-green-100 p-3 rounded-full mr-4">
-                  <FaUser className="text-green-600 text-xl" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-lg">{user.name}</h4>
-                  <p className="text-gray-600">{user.phone}</p>
-                </div>
-              </div>
-
-              <button
-                onClick={handleLogout}
-                className="w-full bg-gray-100 text-gray-800 py-3 rounded-lg hover:bg-gray-200 transition font-medium border border-gray-200"
-              >
-                লগআউট
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}

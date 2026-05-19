@@ -31,7 +31,7 @@ const ViewCategory = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [formData, setFormData] = useState({
     name: "", image: null, sort_order: 0,
-    product_limit: 10, parent_id: "", show_on_homepage: false,
+    product_limit: 10, parent_id: "", show_on_homepage: false, free_delivery: false,
   });
 
   useEffect(() => {
@@ -66,6 +66,7 @@ const ViewCategory = () => {
       name: cat.name, image: null, sort_order: cat.sort_order,
       product_limit: cat.product_limit, parent_id: cat.parent_id || "",
       show_on_homepage: cat.show_on_homepage,
+      free_delivery: !!cat.free_delivery,
     });
   };
 
@@ -106,6 +107,7 @@ const ViewCategory = () => {
     data.append("product_limit", formData.product_limit.toString());
     data.append("parent_id", formData.parent_id ? formData.parent_id.toString() : "");
     data.append("show_on_homepage", formData.show_on_homepage ? "1" : "0");
+    data.append("free_delivery", formData.free_delivery ? "1" : "0");
     if (formData.image) data.append("image", formData.image);
     try {
       await axios.post(`${apiUrl}/categoryupdate/${editingCat}`, data, {
@@ -140,13 +142,14 @@ const ViewCategory = () => {
             </TH>
             <TH>Limit</TH>
             <TH>Homepage</TH>
+            <TH>Free Delivery</TH>
             <TH className="text-right">Actions</TH>
           </THead>
           {loading ? (
-            <TableSkeleton rows={5} cols={6} />
+            <TableSkeleton rows={5} cols={7} />
           ) : categories.length === 0 ? (
             <TBody>
-              <tr><td colSpan={6}>
+              <tr><td colSpan={7}>
                 <EmptyState icon={Tag} title="No categories" message="Create your first product category." />
               </td></tr>
             </TBody>
@@ -200,6 +203,13 @@ const ViewCategory = () => {
                           <Badge variant="success">
                             <Home size={10} className="mr-1" />Yes
                           </Badge>
+                        ) : (
+                          <Badge variant="gray">No</Badge>
+                        )}
+                      </TD>
+                      <TD>
+                        {cat.free_delivery ? (
+                          <Badge variant="info">Free</Badge>
                         ) : (
                           <Badge variant="gray">No</Badge>
                         )}

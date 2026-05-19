@@ -14,7 +14,7 @@ const apiUrl = config.apiUrl;
 
 const CreateCategory = ({ onCategoryCreated }) => {
   const [formData, setFormData] = useState({
-    name: "", image: null, sort_order: 0, product_limit: 10, parent_id: "", show_on_homepage: false,
+    name: "", image: null, sort_order: 0, product_limit: 10, parent_id: "", show_on_homepage: false, free_delivery: false,
   });
   const [categories, setCategories] = useState([]);
   const [preview, setPreview] = useState(null);
@@ -66,10 +66,11 @@ const CreateCategory = ({ onCategoryCreated }) => {
     data.append("product_limit", formData.product_limit.toString());
     data.append("parent_id", formData.parent_id ? formData.parent_id.toString() : "");
     data.append("show_on_homepage", formData.show_on_homepage ? "1" : "0");
+    data.append("free_delivery", formData.free_delivery ? "1" : "0");
     try {
       await axios.post(`${apiUrl}/category`, data, { headers: { "Content-Type": "multipart/form-data" } });
       setSuccess("Category created successfully!");
-      setFormData({ name: "", image: null, sort_order: 0, product_limit: 10, parent_id: "", show_on_homepage: false });
+      setFormData({ name: "", image: null, sort_order: 0, product_limit: 10, parent_id: "", show_on_homepage: false, free_delivery: false });
       setPreview(null);
       setTimeout(() => { setSuccess(null); if (onCategoryCreated) onCategoryCreated(); }, 1200);
     } catch (err) {
@@ -111,6 +112,15 @@ const CreateCategory = ({ onCategoryCreated }) => {
             onChange={handleChange}
             label="Show on Homepage"
             description="Display this category on the store homepage"
+          />
+
+          <Toggle
+            name="free_delivery"
+            id="free_delivery"
+            checked={formData.free_delivery}
+            onChange={handleChange}
+            label="Free Delivery on All Products in This Category"
+            description="Any product in this category will ship free, overriding district-based charges"
           />
 
           <FormField label="Category Image" required hint="Auto-compressed to WebP · Recommended 1:1 ratio">

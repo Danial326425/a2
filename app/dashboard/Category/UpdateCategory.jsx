@@ -58,6 +58,16 @@ const UpdateCategory = ({
       />
     </FormField>
 
+    <FormField label="Free Delivery">
+      <Toggle
+        name="free_delivery"
+        checked={!!formData.free_delivery}
+        onChange={handleChange}
+        label={formData.free_delivery ? "All products in this category ship free" : "Standard delivery charge applies"}
+        description="Overrides district-based charges for any product in this category"
+      />
+    </FormField>
+
     <FormField label="Category Image" hint="Will be compressed to WebP (max 0.5 MB). Leave blank to keep current.">
       <FileUpload
         onChange={handleImageChange}

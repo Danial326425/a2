@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
 import dynamic from 'next/dynamic';
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Navbar from "@/app/components/Dashboard/Navbar";
 import Sidebar from "@/app/components/Dashboard/Sidebar";
 import PrivateRoute from "./PrivateRoute";
@@ -35,10 +36,9 @@ const CreateCategory = dynamic(() => import("./Category/CreateCategory"), { ssr:
 const ViewCategory = dynamic(() => import("./Category/ViewCategory"), { ssr: false });
 const CreateLegal = dynamic(() => import("./Legal/CreateLegal"), { ssr: false });
 const ViewLegal = dynamic(() => import("./Legal/ViewLegal"), { ssr: false });
-const CreateContact = dynamic(() => import("./Contact/CreateContact"), { ssr: false });
-const ViewContact = dynamic(() => import("./Contact/ViewContact"), { ssr: false });
-const CreateContactInfo = dynamic(() => import("./ContactInfo/CreateContactInfo"), { ssr: false });
-const ViewContactInfo = dynamic(() => import("./ContactInfo/ViewContactInfo"), { ssr: false });
+const ViewContactUs = dynamic(() => import("./ContactUs/ViewContactUs"), { ssr: false });
+const ViewAbout     = dynamic(() => import("./About/ViewAbout"), { ssr: false });
+const ViewFooterSettings = dynamic(() => import("./FooterSettings/ViewFooterSettings"), { ssr: false });
 const CreateMenu = dynamic(() => import("./Menu/CreateMenu"), { ssr: false });
 const ViewMenu = dynamic(() => import("./Menu/ViewMenu"), { ssr: false });
 const CreateSocial = dynamic(() => import("./Social/CreateSocial"), { ssr: false });
@@ -63,14 +63,44 @@ const ViewUpsellProducts  = dynamic(() => import("./Upsell/ViewUpsellProducts"),
 const UpsellSettings      = dynamic(() => import("./Upsell/UpsellSettings"),      { ssr: false });
 const VariationLibrary    = dynamic(() => import("./Presets/VariationLibrary"),   { ssr: false });
 const ViewOrderSettings   = dynamic(() => import("./OrderSettings/ViewOrderSettings"), { ssr: false });
+const CreateCoupon        = dynamic(() => import("./Coupon/CreateCoupon"), { ssr: false });
+const ViewCoupon          = dynamic(() => import("./Coupon/ViewCoupon"), { ssr: false });
+const CreateCartReward    = dynamic(() => import("./CartReward/CreateCartReward"), { ssr: false });
+const ViewCartReward      = dynamic(() => import("./CartReward/ViewCartReward"), { ssr: false });
 
 
 const Dashboard = () => {
-  const [selectedMenu, setSelectedMenu] = useState('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const router       = useRouter();
+  const pathname     = usePathname();
+  const searchParams = useSearchParams();
+
+  // Initial menu comes from ?menu= so reload preserves the active section.
+  // Falls back to 'dashboard' when missing.
+  const menuFromUrl = searchParams.get('menu') || 'dashboard';
+  const [selectedMenu, setSelectedMenuState] = useState(menuFromUrl);
+  const [isSidebarOpen, setIsSidebarOpen]   = useState(false);
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [userRole, setUserRole] = useState(null);
+  const [isCollapsed, setIsCollapsed]       = useState(false);
+  const [userRole, setUserRole]             = useState(null);
+
+  // Keep state in sync if user uses browser back/forward
+  useEffect(() => {
+    const next = searchParams.get('menu') || 'dashboard';
+    if (next !== selectedMenu) setSelectedMenuState(next);
+  }, [searchParams, selectedMenu]);
+
+  // Setter that also pushes the menu into the URL (without scroll jump).
+  const setSelectedMenu = useCallback((menu) => {
+    setSelectedMenuState(menu);
+    const params = new URLSearchParams(searchParams.toString());
+    if (menu === 'dashboard') {
+      params.delete('menu');
+    } else {
+      params.set('menu', menu);
+    }
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   useEffect(() => {
     setIsCollapsed(localStorage.getItem("sidebarCollapsed") === "true");
@@ -108,7 +138,7 @@ const Dashboard = () => {
         // All admin accessible menus
         "dashboard",
         "createHome", "homeOverview", "createLegal", "legalOverview",
-        "createContact", "contactOverview", "createContactInfo", "contactInfoOverview",
+        "contactUsOverview", "aboutOverview", "footerOverview",
         "createMenu", "menuOverview", "createSocial", "socialOverview", "createLogo",
         "logoOverview", "createCategory", "categoryOverview", "createSize", "sizeOverview",
         "createDeliveryCharge", "deliveryChargeOverview", "createPixel", "PixelOverview",
@@ -119,12 +149,13 @@ const Dashboard = () => {
         "paymentMethodOverview", "createCommunity", "communityOverview", "createAdvancePay", "advancePayOverview","createBanner", "bannerOverview", "createLandingPage","landingPageOverview",
         "trackingOverview",
         "createUpsellProduct", "upsellProductOverview", "upsellSettings",
-        "variationLibrary", "orderSettings"
+        "variationLibrary", "orderSettings",
+        "createCoupon", "couponOverview", "createCartReward", "cartRewardOverview"
       ],
       moderator: [
         // Moderator specific access
         "categoryOverview", "productOverview", "customerOverview", "createOrder", "dashboard",
-        "createCategory", "createProduct", "contactOverview", "createSteadfast", "steadfastOverview",
+        "createCategory", "createProduct", "contactUsOverview", "createSteadfast", "steadfastOverview",
         "leadOverview", "createCommunity", "communityOverview","createBanner", "bannerOverview",
         "createUpsellProduct", "upsellProductOverview", "upsellSettings",
         "variationLibrary"
@@ -160,14 +191,12 @@ const Dashboard = () => {
         return <CreateLegal onLegalCreated={() => setSelectedMenu('legalOverview')} />;
       case "legalOverview":
         return <ViewLegal />;
-      case "createContact":
-        return <CreateContact onContactCreated={() => setSelectedMenu('contactOverview')} />;
-      case "contactOverview":
-        return <ViewContact />;
-      case "createContactInfo":
-        return <CreateContactInfo onContactInfoCreated={() => setSelectedMenu('contactInfoOverview')} />;
-      case "contactInfoOverview":
-        return <ViewContactInfo />;
+      case "contactUsOverview":
+        return <ViewContactUs />;
+      case "aboutOverview":
+        return <ViewAbout />;
+      case "footerOverview":
+        return <ViewFooterSettings />;
       case "createMenu":
         return <CreateMenu onMenuCreated={() => setSelectedMenu('menuOverview')} />;
       case "menuOverview":
@@ -261,6 +290,16 @@ const Dashboard = () => {
       case "orderSettings":
         return <ViewOrderSettings />;
 
+      case "createCoupon":
+        return <CreateCoupon onCouponCreated={() => setSelectedMenu('couponOverview')} />;
+      case "couponOverview":
+        return <ViewCoupon onCreateNew={() => setSelectedMenu('createCoupon')} />;
+
+      case "createCartReward":
+        return <CreateCartReward onCreated={() => setSelectedMenu('cartRewardOverview')} />;
+      case "cartRewardOverview":
+        return <ViewCartReward onCreateNew={() => setSelectedMenu('createCartReward')} />;
+
       case "createOrder":
         return <CreateOrder onOrderCreated={() => setSelectedMenu('customerOverview')} />;
       case "customerOverview":
@@ -318,4 +357,20 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+// Suspense boundary is required around useSearchParams in Next.js App Router
+// client components to avoid a CSR bailout warning / build error.
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSuspenseFallback />}>
+      <Dashboard />
+    </Suspense>
+  );
+}
+
+function DashboardSuspenseFallback() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-gray-100">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+    </div>
+  );
+}

@@ -111,6 +111,7 @@ function CategoryCard({ category, imageProxyUrl, onClick }) {
                 src={`${imageProxyUrl}/${category.image}`}
                 alt={category.name}
                 fill
+                sizes="(max-width: 640px) 25vw, (max-width: 1024px) 20vw, 200px"
                 className="object-cover transition-transform duration-500 group-hover:scale-110"
                 onError={(e) => {
                   e.target.src = '/images/category-placeholder.png';

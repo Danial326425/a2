@@ -37,7 +37,9 @@ const ViewProduct = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
-    name: "", price: "", discount_price: "", max_per_order: "", category_id: [], clothing: false,
+    name: "", price: "", discount_price: "", max_per_order: "",
+    free_delivery_enabled: false, free_delivery_min_qty: "",
+    category_id: [], clothing: false,
     images: [], colors: [{ color: "", image: null, sizes: [{ size: "" }] }],
     bulk_discounts: [{ title: "", offer_quantity: "", discount_percentage: "" }],
     bumps: [{ title: "", bump_price: "", image: null, description: "" }],
@@ -100,6 +102,8 @@ const ViewProduct = () => {
       price: product.price || "",
       discount_price: product.discount_price || "",
       max_per_order: product.max_per_order ?? "",
+      free_delivery_enabled: !!product.free_delivery_enabled,
+      free_delivery_min_qty: product.free_delivery_min_qty ?? "",
       category_id: product.categories?.map(c => c.id) || [],
       clothing: product.clothing || false,
       images: product.images || [],
@@ -171,6 +175,16 @@ const ViewProduct = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Guard: bulk free-delivery is only meaningful with a positive min qty.
+    if (formData.free_delivery_enabled) {
+      const n = parseInt(formData.free_delivery_min_qty, 10);
+      if (!Number.isFinite(n) || n < 1) {
+        setError("Free Delivery on Bulk Purchase enable করতে হলে Minimum Quantity (≥1) দিতে হবে");
+        return;
+      }
+    }
+
     try {
       const data = new FormData();
       data.append("_method", "PUT");
@@ -178,6 +192,8 @@ const ViewProduct = () => {
       data.append("price", formData.price);
       data.append("discount_price", formData.discount_price || "");
       data.append("max_per_order", formData.max_per_order || "");
+      data.append("free_delivery_enabled", formData.free_delivery_enabled ? "1" : "0");
+      data.append("free_delivery_min_qty", formData.free_delivery_min_qty || "");
       formData.category_id.forEach((id, i) => data.append(`categories[${i}]`, id));
       data.append("slug", formData.slug);
       data.append("clothing", formData.clothing ? "1" : "0");

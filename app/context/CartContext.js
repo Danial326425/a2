@@ -6,6 +6,7 @@ const CartContext = createContext();
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
+  const [coupon, setCouponState] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Load cart from localStorage on mount
@@ -14,6 +15,10 @@ export function CartProvider({ children }) {
       const saved = localStorage.getItem('cart-items');
       if (saved) {
         setItems(JSON.parse(saved));
+      }
+      const savedCoupon = localStorage.getItem('cart-coupon');
+      if (savedCoupon) {
+        setCouponState(JSON.parse(savedCoupon));
       }
     } catch (e) {
       console.error('[CartContext] Failed to load cart:', e);
@@ -27,6 +32,18 @@ export function CartProvider({ children }) {
       localStorage.setItem('cart-items', JSON.stringify(items));
     }
   }, [items, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized) return;
+    if (coupon) {
+      localStorage.setItem('cart-coupon', JSON.stringify(coupon));
+    } else {
+      localStorage.removeItem('cart-coupon');
+    }
+  }, [coupon, isInitialized]);
+
+  const setCoupon = useCallback((c) => setCouponState(c), []);
+  const clearCoupon = useCallback(() => setCouponState(null), []);
 
   const addItem = useCallback((item, qty = 1) => {
     setItems((prev) => {
@@ -61,6 +78,7 @@ export function CartProvider({ children }) {
 
   const clearCart = useCallback(() => {
     setItems([]);
+    setCouponState(null);
   }, []);
 
   const cartTotal = items.reduce((sum, item) => {
@@ -78,6 +96,9 @@ export function CartProvider({ children }) {
     removeItem,
     setItems: setItemsDirect,
     clearCart,
+    coupon,
+    setCoupon,
+    clearCoupon,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

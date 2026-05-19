@@ -175,8 +175,6 @@ const PriceSummary = ({ order }) => {
   const upsellAccepted = order.upsell_status === 'accepted';
   const showUpsellLine = !!(upsellItem || (upsellAccepted && (order.upsell_price || order.upsell_product?.offer_price)));
 
-  console.log(order.upsell_product?.offer_price)
-
   const upsellDisplayName = upsellItem
     ? upsellItem.product_name.replace('[Upsell] ', '')
     : (order.upsell_product?.name ?? 'আপসেল পণ্য');
@@ -377,8 +375,49 @@ const OrderNotFound = () => (
 );
 
 const LoadingSpinner = () => (
-  <div className="flex h-screen items-center justify-center bg-white">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-green-500"></div>
+  // Skeleton matches the real thank-you layout so the user perceives instant
+  // structure instead of a blank spinner → better LCP / CLS feel.
+  <div className="bg-gradient-to-br from-blue-50 to-gray-50 min-h-screen py-12">
+    <div className="container mx-auto px-4 max-w-2xl animate-pulse">
+      <div className="text-center mb-12">
+        <div className="w-20 h-20 rounded-full bg-emerald-100 mx-auto mb-5" />
+        <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-3" />
+        <div className="h-5 bg-gray-100 rounded w-1/2 mx-auto" />
+      </div>
+      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+        <div className="h-14 bg-blue-100" />
+        <div className="p-6 space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div className="h-5 bg-gray-200 rounded w-1/3" />
+              <div className="space-y-2 pl-8">
+                <div className="h-4 bg-gray-100 rounded w-3/4" />
+                <div className="h-4 bg-gray-100 rounded w-2/3" />
+                <div className="h-4 bg-gray-100 rounded w-1/2" />
+              </div>
+              <div className="h-4 bg-gray-200 rounded w-1/3 mt-4" />
+              <div className="h-24 bg-gray-50 rounded-md border border-gray-100" />
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <div className="h-5 bg-gray-200 rounded w-1/3" />
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex justify-between">
+                    <div className="h-3.5 bg-gray-100 rounded w-1/3" />
+                    <div className="h-3.5 bg-gray-200 rounded w-1/4" />
+                  </div>
+                ))}
+              </div>
+              <div className="h-px bg-gray-200 my-3" />
+              <div className="flex justify-between">
+                <div className="h-5 bg-gray-300 rounded w-1/4" />
+                <div className="h-5 bg-gray-300 rounded w-1/4" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 );
 

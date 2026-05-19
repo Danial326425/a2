@@ -111,7 +111,7 @@ const ViewLegal = () => {
                     </TD>
                     <TD className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <Link to={`/legal/${legal.slug}`} target="_blank">
+                        <Link href={`/legal/${legal.slug}`} target="_blank">
                           <ActionBtn variant="ghost" size="sm" icon={ExternalLink} title="View Page" />
                         </Link>
                         <ActionBtn variant="ghost" size="sm" icon={Pencil} onClick={() => handleEditClick(legal)} title="Edit" />

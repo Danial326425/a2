@@ -3,12 +3,13 @@
 import React, { Suspense, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import NextImage from 'next/image';
+import { useRouter } from 'next/navigation';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { FaShoppingCart, FaMinus, FaPlus, FaTruck, FaInfoCircle } from 'react-icons/fa';
-import { OrderContext } from '../context/OrderContext';
+import { OrderContext, clearCheckoutDraft } from '../context/OrderContext';
 import axios from 'axios';
 import { HeaderContext } from '../context/HeaderContext';
 import { ProductContext } from '../context/ProductsContext';
@@ -16,6 +17,8 @@ import { trackBrowserEvent, sendCAPIEvent, generateEventId } from '../lib/pixel'
 import { track } from '../lib/tracking';
 import bdLocations from '../data/locations';
 import { useCart } from '../context/CartContext';
+import DeliveryCharge from '../components/Landing/DeliveryCharge';
+import CouponBox from '../components/CouponBox';
 
 // Heavy / below-the-fold deps: lazy-loaded so they don't block initial JS.
 // react-slick + framer-motion + CartPanel together ≈ 120KB; keeping them out
@@ -248,6 +251,7 @@ const SimpleImageZoom = ({ src, alt, className, style, priority = false, sizes }
 
 
 const OrderPageClient = ({ slug, initialProduct }) => {
+  const router = useRouter();
 
   const {
     apiUrl,
@@ -264,7 +268,9 @@ const OrderPageClient = ({ slug, initialProduct }) => {
     phone,
     homepage,
     deliveryCharge,
+    setDeliveryCharge,
     estimatedDays,
+    setEstimatedDays,
     filterAllProducts,
     setName,
     setAddress,
@@ -274,7 +280,10 @@ const OrderPageClient = ({ slug, initialProduct }) => {
     handleQuantityChange,
     calculatePrices,
     selectedDistrict,
+    setSelectedDistrict,
     deliveryNote,
+    setDeliveryNote,
+    districts: districtData,
     handleBulkDiscountSelect,
     selectedBulkDiscount,
     handleBumpSelect,
@@ -325,7 +334,14 @@ const OrderPageClient = ({ slug, initialProduct }) => {
     }
   }, [products, quantity, selectedDistrict, districts, selectedBulkDiscount]);
 
-  const { basePrice, productPrice, totalPrice, appliedDiscount } = calculatedPrices;
+  const {
+    basePrice,
+    productPrice,
+    totalPrice,
+    appliedDiscount,
+    bumpsTotal = 0,
+    bulkDiscount = 0,
+  } = calculatedPrices;
 
 
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -353,6 +369,71 @@ const OrderPageClient = ({ slug, initialProduct }) => {
 
  const [phoneError, setPhoneError] = useState("");
  const [sizeError, setSizeError]   = useState('');
+ // Applied coupon — { code, type, discount, free_delivery } or null
+ const [appliedCoupon, setAppliedCoupon] = useState(null);
+ // Global order settings (quantity_limit_enabled, global_max_per_order, etc.)
+ const [orderSettings, setOrderSettings] = useState(null);
+ // Inline submit error (e.g. IP limit 429) — replaces alert() so the message
+ // is visible right above the submit button instead of dismissable.
+ const [submitError, setSubmitError] = useState(null);
+
+ // Fetch order settings once so we can apply the per-order quantity limit live.
+ useEffect(() => {
+   if (!apiUrl) return;
+   const controller = new AbortController();
+   axios
+     .get(`${apiUrl}/order-settings`, { signal: controller.signal })
+     .then((res) => setOrderSettings(res.data || {}))
+     .catch(() => {});
+   return () => controller.abort();
+ }, [apiUrl]);
+
+ // Resolve the effective max quantity for this product:
+ //   - If quantity_limit_enabled is OFF → no cap
+ //   - Else product.max_per_order takes precedence; falls back to the global
+ //     setting; null means uncapped.
+ const effectiveMaxQty = useMemo(() => {
+   if (!orderSettings?.quantity_limit_enabled) return null;
+   const productCap = Number(products?.max_per_order);
+   if (Number.isFinite(productCap) && productCap > 0) return productCap;
+   const globalCap = Number(orderSettings?.global_max_per_order);
+   return Number.isFinite(globalCap) && globalCap > 0 ? globalCap : null;
+ }, [orderSettings, products?.max_per_order]);
+
+ const qtyAtMax = effectiveMaxQty !== null && Number(quantity) >= effectiveMaxQty;
+
+  // Mirror of backend DeliveryService rules:
+  //   1) product.free_delivery_enabled && qty >= product.free_delivery_min_qty
+  //   2) any of product.categories has free_delivery = true
+  //   3) coupon is free_delivery type
+  // Frontend recalculates so price summary reflects free delivery without a
+  // round-trip to /coupons/validate or order-submit.
+  const productFreeShip = useMemo(() => {
+    const minQty = Number(products?.free_delivery_min_qty || 0);
+    return !!products?.free_delivery_enabled && minQty > 0 && Number(quantity || 0) >= minQty;
+  }, [products?.free_delivery_enabled, products?.free_delivery_min_qty, quantity]);
+
+  const categoryFreeShip = useMemo(
+    () => (products?.categories || []).some((c) => !!c.free_delivery),
+    [products?.categories]
+  );
+
+  const freeShipReason = appliedCoupon?.free_delivery
+    ? 'কুপন'
+    : (productFreeShip ? 'Bulk Purchase' : (categoryFreeShip ? 'Category Free' : null));
+  const isFreeDelivery = !!freeShipReason;
+
+  // DeliveryCharge component callback — receives (charge, area) where area
+  // is the full delivery zone (district_name, delivery_charge, estimated_days,
+  // delivery_note). Updates all related OrderContext state in one shot so the
+  // price summary + submit payload stay in sync.
+  const handleDeliveryChange = useCallback((_charge, area) => {
+    if (!area) return;
+    setDeliveryCharge(area.delivery_charge);
+    setEstimatedDays(area.estimated_days);
+    setDeliveryNote(area.delivery_note || '');
+    setSelectedDistrict(area.district_name);
+  }, [setDeliveryCharge, setEstimatedDays, setDeliveryNote, setSelectedDistrict]);
 
    // ফোন নাম্বার বাংলা থেকে ইংরেজি করার ফাংশন
     const handlePhoneChange = (e) => {
@@ -531,6 +612,19 @@ const handleAddToCart = (product) => {
       fetchProductDetails(slug);
     }
   }, [slug, initialProduct, hydrateProduct, fetchAllProducts, fetchProductDetails]);
+
+  // BFCache restoration: when user navigates Back from /thankyou or /upsell,
+  // some browsers serve the page from the back-forward cache without firing
+  // React lifecycle. The `pageshow` event with `persisted=true` is our signal
+  // to re-hydrate so the form fields + product details are fresh.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onShow = (e) => {
+      if (e.persisted && initialProduct?.id) hydrateProduct(initialProduct);
+    };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, [initialProduct, hydrateProduct]);
 
   // বিভাগ লোড
   useEffect(() => {
@@ -758,7 +852,9 @@ const handleAddToCart = (product) => {
       color: selectedColor || "",
       size: selectedSize || "",
       quantity,
-      delivery_charge: deliveryCharge,
+      // Backend re-validates free-delivery rules, but we mirror them here so
+      // the displayed total matches the saved order if the user reviews.
+      delivery_charge: isFreeDelivery ? 0 : deliveryCharge,
       cod_advance: codAdvance ? codAdvance.pay_amount : 0,
       product_price: products.discount_price ? products.discount_price * quantity : products.price * quantity,
       total: payableAmount,
@@ -771,9 +867,10 @@ const handleAddToCart = (product) => {
       payment_number: paymentNumber,
 
       delivery_note: deliveryNote,
-      bulk_discounts: selectedBulkDiscounts, 
+      bulk_discounts: selectedBulkDiscounts,
       bumps: selectedBumps,
-      items: orderItems
+      items: orderItems,
+      coupon_code: appliedCoupon?.code || null,
     };
 
   
@@ -782,6 +879,18 @@ const handleAddToCart = (product) => {
       alert('আপনার ইন্টারনেট সংযোগ নেই। দয়া করে ইন্টারনেট সংযোগ চেক করুন এবং আবার চেষ্টা করুন।');
       return;
     }
+
+    // Pre-flight: check IP daily quota so we never enter Processing… for a
+    // request the backend will reject with 429. Alert immediately if reached.
+    try {
+      const q = await axios.get(`${apiUrl}/order-settings/quota`);
+      if (q.data?.reached) {
+        const msg = `আপনার অর্ডার লিমিট শেষ। আপনি গত ২৪ ঘণ্টায় সর্বোচ্চ ${q.data.limit}টি অর্ডার করেছেন। আজ আর অর্ডার করা যাবে না।`;
+        setSubmitError(msg);
+        alert(msg);
+        return;
+      }
+    } catch { /* quota check is best-effort — submit anyway, backend will still reject */ }
 
     setIsSubmitting(true);
 
@@ -796,17 +905,32 @@ const handleAddToCart = (product) => {
 
       setDataSaved(true);
       track('order', slug);
-      window.location.href = `/upsell/${randomNumber}`;
+      // Order succeeded — wipe the draft so a back-nav doesn't repopulate the
+      // form with already-submitted data. Soft-nav keeps context tree alive.
+      clearCheckoutDraft();
+      router.push(`/upsell/${randomNumber}`);
       
     } catch (error) {
       let errorMessage = 'অর্ডার সাবমিশন ব্যর্থ হয়েছে';
 
       if (error.code === 'ECONNABORTED') {
         errorMessage = 'সার্ভারে রেসপন্স দিতে দেরি হচ্ছে। দয়া করে পরে আবার চেষ্টা করুন';
-
-
+      } else {
+        const status = error.response?.status;
+        const data   = error.response?.data;
+        if (status === 429) {
+          // IP-based daily limit — backend sends a precise Bengali message
+          const fromErrors = data?.errors?.ip_address?.[0];
+          errorMessage = fromErrors || data?.message || 'আপনার অর্ডার লিমিট শেষ। আজ আর অর্ডার করা যাবে না।';
+        } else if (status === 422) {
+          const firstFieldErr = data?.errors ? Object.values(data.errors).flat()[0] : null;
+          errorMessage = firstFieldErr || data?.message || errorMessage;
+        } else if (data?.message) {
+          errorMessage = data.message;
+        }
       }
 
+      setSubmitError(errorMessage);
       alert(errorMessage);
     }
 
@@ -1412,11 +1536,22 @@ const handleAddToCart = (product) => {
                     <button
                       type="button"
                       onClick={() => handleQuantityChange('increment')}
-                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition transform hover:scale-105"
+                      disabled={qtyAtMax}
+                      title={qtyAtMax ? `সর্বোচ্চ ${effectiveMaxQty}টি অর্ডার করা যাবে` : undefined}
+                      className={`px-4 py-2 rounded-lg transition transform ${
+                        qtyAtMax
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-105'
+                      }`}
                     >
                       <FaPlus />
                     </button>
                   </div>
+                  {qtyAtMax && (
+                    <p className="text-xs text-amber-600 mt-1 font-medium">
+                      সর্বোচ্চ <strong>{effectiveMaxQty}টি</strong> অর্ডার করা যাবে
+                    </p>
+                  )}
                   {selectedBulkDiscount && (
                     <p className="text-sm text-gray-500 mt-1">
                       ডিসকাউন্ট পেতে ঠিক {selectedBulkDiscount.offer_quantity} টি অর্ডার করুন
@@ -1462,8 +1597,10 @@ const handleAddToCart = (product) => {
                     </label>
                     <input
                       type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="tel"
                       value={phone}
-
                       onChange={handlePhoneChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                       placeholder="01XXXXXXXXX"
@@ -1483,6 +1620,7 @@ const handleAddToCart = (product) => {
                     </label>
                     <input
                       type="text"
+                      autoComplete="name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
@@ -1554,6 +1692,7 @@ const handleAddToCart = (product) => {
                       আপনার গ্রাম/রোড:
                     </label>
                     <textarea
+                      autoComplete="street-address"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
@@ -1563,10 +1702,39 @@ const handleAddToCart = (product) => {
                     />
                   </div>
 
-                  {/* District Selector */}
-                  <Suspense fallback={<div>Loading...</div>}>
-                    <DistrictSelector />
-                  </Suspense>
+                  {/* Coupon code — applies discount + optional free delivery */}
+                  <CouponBox
+                    apiUrl={apiUrl}
+                    items={[{
+                      product_id: products?.id,
+                      quantity: quantity,
+                      price: products?.discount_price || products?.price || 0,
+                    }]}
+                    phone={phone}
+                    coupon={appliedCoupon}
+                    onApply={setAppliedCoupon}
+                    onRemove={() => setAppliedCoupon(null)}
+                    className="mb-5"
+                  />
+
+                  {/* Delivery zone selector — hidden when free delivery applies
+                       (bulk-qty / category / coupon). When free, district pick
+                       is meaningless because the charge is forced to 0. */}
+                  {!isFreeDelivery && (
+                    <DeliveryCharge
+                      handleDeliveryChange={handleDeliveryChange}
+                      deliveryArea={districtData || []}
+                      setSelectedDeliveryCharge={setDeliveryCharge}
+                    />
+                  )}
+                  {isFreeDelivery && (
+                    <div className="mb-4 rounded-lg bg-green-50 border border-green-200 px-3 py-2.5 text-sm text-green-700 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-green-500" />
+                      <span>
+                        এই অর্ডারে <strong>ফ্রি ডেলিভারি</strong> ({freeShipReason}) — কোনো ডেলিভারি চার্জ যোগ হবে না।
+                      </span>
+                    </div>
+                  )}
                 </div>
                 }
 
@@ -1610,22 +1778,42 @@ const handleAddToCart = (product) => {
                   </div>
                 )}
 
+                  {/* Coupon Discount */}
+                  {appliedCoupon && !appliedCoupon.free_delivery && Number(appliedCoupon.discount) > 0 && (
+                    <div className="flex justify-between items-center mb-2 text-emerald-600">
+                      <span>কুপন ছাড় ({appliedCoupon.code}):</span>
+                      <span>- ৳{Math.round(Number(appliedCoupon.discount))}</span>
+                    </div>
+                  )}
+
                   {/* Delivery Charge */}
                   {showForm && <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-600">ডেলিভারি চার্জ ({selectedDistrict}):</span>
-                    <span className={`font-bold ${deliveryCharge === 0 ? 'text-green-600' : ''}`}>
-                      {deliveryCharge === 0 ? 'ফ্রি' : `৳${deliveryCharge}`}
+                    <span className={`font-bold ${(isFreeDelivery || deliveryCharge === 0) ? 'text-green-600' : ''}`}>
+                      {isFreeDelivery
+                        ? `ফ্রি (${freeShipReason})`
+                        : (deliveryCharge === 0 ? 'ফ্রি' : `৳${deliveryCharge}`)}
                     </span>
                   </div>}
 
-                  {/* Total Price */}
+                  {/* Total Price (after coupon + free-delivery adjustments) */}
                   <div className="flex justify-between items-center pt-3 mt-3 border-t border-gray-200">
                     <span className="text-lg font-bold text-gray-800">মোট মূল্য:</span>
                     <span className="text-xl font-bold text-blue-600">
-                      {showForm 
-                        ? `৳${Math.floor(totalPrice)}` 
-                        : `৳${Math.floor((totalPrice - deliveryCharge))}`
-                      }
+                      {(() => {
+                        // Compute from primitives so we don't depend on whether
+                        // `totalPrice` already includes delivery in the current render.
+                        const subtotalNoDelivery = Math.max(
+                          0,
+                          Number(basePrice || 0) + Number(bumpsTotal || 0) - Number(bulkDiscount || 0)
+                        );
+                        const couponDisc = appliedCoupon && !appliedCoupon.free_delivery
+                          ? Math.round(Number(appliedCoupon.discount || 0))
+                          : 0;
+                        const ship    = isFreeDelivery ? 0 : Number(deliveryCharge || 0);
+                        const finalT  = Math.max(0, Math.floor(subtotalNoDelivery + (showForm ? ship : 0) - couponDisc));
+                        return `৳${finalT}`;
+                      })()}
                     </span>
 
                   </div>
@@ -1705,6 +1893,17 @@ const handleAddToCart = (product) => {
               )}
 
                 {renderPaymentMethods()}
+
+                {/* Inline submit error (e.g. IP limit reached) */}
+                {submitError && (
+                  <div
+                    role="alert"
+                    className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start gap-2"
+                  >
+                    <FaInfoCircle className="shrink-0 mt-0.5 text-red-500" />
+                    <span>{submitError}</span>
+                  </div>
+                )}
 
                 {/* Order Button */}
               { showForm && <button

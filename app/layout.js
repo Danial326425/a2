@@ -5,6 +5,7 @@ import OrderProvider from './context/OrderContext';
 import HeaderProvider from "./context/HeaderContext";
 import ProductProvider from "./context/ProductsContext";
 import ClientLayout from "./components/ClientLayout";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,17 +29,19 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <CartProvider>
-          <ProductProvider>
-            <HeaderProvider>
-              <OrderProvider>
-                <ClientLayout>
-                  {children}
-                </ClientLayout>
-              </OrderProvider>
-            </HeaderProvider>
-          </ProductProvider>
-        </CartProvider>
+        <ErrorBoundary>
+          <CartProvider>
+            <ProductProvider>
+              <HeaderProvider>
+                <OrderProvider>
+                  <ClientLayout>
+                    {children}
+                  </ClientLayout>
+                </OrderProvider>
+              </HeaderProvider>
+            </ProductProvider>
+          </CartProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

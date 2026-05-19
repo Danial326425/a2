@@ -1,24 +1,55 @@
 'use client';
 
-import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext, useRef, useMemo } from 'react';
 import axios from 'axios';
 import { config } from '@/config/config';
 
 export const OrderContext = createContext();
 
+// sessionStorage backup of non-sensitive form fields so a hard refresh OR a
+// back-nav from /thankyou doesn't wipe the customer's typing. Survives only
+// for the tab's lifetime (sessionStorage). Excludes payment_number /
+// transaction_id and any auth tokens — those must never persist.
+const CHECKOUT_DRAFT_KEY = 'checkout-draft-v1';
+
+function readDraft() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(CHECKOUT_DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(draft) {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify(draft));
+  } catch { /* quota / private mode — safe to ignore */ }
+}
+
+export function clearCheckoutDraft() {
+  if (typeof window === 'undefined') return;
+  try { sessionStorage.removeItem(CHECKOUT_DRAFT_KEY); } catch {}
+}
+
 export default function OrderProvider({ children }) {
   const apiUrl = config.apiUrl;
   const imageUrl = config.imageUrl;
 
+  // Seed form fields from sessionStorage so back/refresh preserves the draft.
+  const seed = typeof window === 'undefined' ? null : readDraft();
+
   const [loading, setLoading] = useState(false);
-  const [selectedColor, setSelectedColor] = useState('');
-  const [selectedColorId, setSelectedColorId] = useState(null);
-  const [selectedSize, setSelectedSize] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const [selectedColor, setSelectedColor] = useState(seed?.selectedColor || '');
+  const [selectedColorId, setSelectedColorId] = useState(seed?.selectedColorId || null);
+  const [selectedSize, setSelectedSize] = useState(seed?.selectedSize || '');
+  const [quantity, setQuantity] = useState(seed?.quantity || 1);
   const [currentImage, setCurrentImage] = useState('');
-  const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
+  const [name, setName] = useState(seed?.name || '');
+  const [address, setAddress] = useState(seed?.address || '');
+  const [phone, setPhone] = useState(seed?.phone || '');
   const [homepage, setHomepage] = useState(null);
   const [deliveryCharge, setDeliveryCharge] = useState(0);
   const [pixel, setPixel] = useState(null);
@@ -55,9 +86,8 @@ export default function OrderProvider({ children }) {
         setEstimatedDays(defaultDistrict.estimated_days);
         setDeliveryNote(defaultDistrict.delivery_note || '');
       }
-    } catch (error) {
+    } catch {
       // Non-fatal — page still renders, user picks district manually
-      console.error('[OrderContext] fetchInitialData error:', error);
     }
   }, [apiUrl]);
 
@@ -90,9 +120,8 @@ export default function OrderProvider({ children }) {
       const res = await axios.get(`${apiUrl}/products`);
       const list = res.data?.data || res.data;
       setAllFilterProducts(Array.isArray(list) ? list : []);
-    } catch (err) {
+    } catch {
       // Non-fatal — related products simply won't render
-      console.error('[OrderContext] fetchAllProducts error:', err);
     }
   }, [apiUrl]);
 
@@ -120,7 +149,6 @@ export default function OrderProvider({ children }) {
       applyProductData(productData);
       setAllFilterProducts(Array.isArray(allProducts) ? allProducts : []);
     } catch (err) {
-      console.error('[OrderContext] Error fetching product:', err);
       if (err.response?.status === 429) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         await fetchProductDetails(slug);
@@ -134,6 +162,22 @@ export default function OrderProvider({ children }) {
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
+
+  // Debounced sessionStorage write — saves draft 400ms after the user stops
+  // typing. Excludes sensitive fields by design.
+  const writeTimerRef = useRef(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    clearTimeout(writeTimerRef.current);
+    writeTimerRef.current = setTimeout(() => {
+      writeDraft({
+        name, address, phone, quantity,
+        selectedColor, selectedColorId, selectedSize,
+        selectedDistrict,
+      });
+    }, 400);
+    return () => clearTimeout(writeTimerRef.current);
+  }, [name, address, phone, quantity, selectedColor, selectedColorId, selectedSize, selectedDistrict]);
 
   const handleColorSelect = (color, image, colorId) => {
     setSelectedColor(color);
@@ -212,51 +256,39 @@ export default function OrderProvider({ children }) {
     });
   }, []);
 
+  // Memoize the context value — without this every state setter call creates
+  // a new object ref → every consumer (Header, Footer, OrderPageClient,
+  // CheckoutSection) re-renders on every keystroke. Setters from useState are
+  // already stable refs so we can list them in deps as no-ops.
+  const value = useMemo(() => ({
+    apiUrl, imageUrl, loading,
+    products, selectedColor, selectedColorId, selectedSize,
+    quantity, currentImage, name, address, phone,
+    homepage, deliveryCharge, setDeliveryCharge,
+    pixel, filterAllProducts,
+    setName, setAddress, setPhone, setSelectedSize,
+    handleColorSelect, handleQuantityChange, calculatePrices,
+    handleDistrictChange, districts, selectedDistrict,
+    estimatedDays, deliveryNote, setDeliveryNote,
+    selectedBulkDiscount, handleBulkDiscountSelect,
+    autoAppliedDiscount, setAutoAppliedDiscount,
+    handleBumpSelect, fetchProductDetails, hydrateProduct, fetchAllProducts,
+    setSelectedDistrict, setEstimatedDays,
+  }), [
+    apiUrl, imageUrl, loading,
+    products, selectedColor, selectedColorId, selectedSize,
+    quantity, currentImage, name, address, phone,
+    homepage, deliveryCharge,
+    pixel, filterAllProducts,
+    districts, selectedDistrict,
+    estimatedDays, deliveryNote,
+    selectedBulkDiscount,
+    autoAppliedDiscount,
+    handleBumpSelect, fetchProductDetails, hydrateProduct, fetchAllProducts,
+  ]);
+
   return (
-    <OrderContext.Provider
-      value={{
-        apiUrl,
-        imageUrl,
-        loading,
-        products,
-        selectedColor,
-        selectedColorId,
-        selectedSize,
-        quantity,
-        currentImage,
-        name,
-        address,
-        phone,
-        homepage,
-        deliveryCharge,
-        setDeliveryCharge,
-        pixel,
-        filterAllProducts,
-        setName,
-        setAddress,
-        setPhone,
-        setSelectedSize,
-        handleColorSelect,
-        handleQuantityChange,
-        calculatePrices,
-        handleDistrictChange,
-        districts,
-        selectedDistrict,
-        estimatedDays,
-        deliveryNote,
-        setDeliveryNote,
-        selectedBulkDiscount,
-        handleBulkDiscountSelect,
-        autoAppliedDiscount,
-        setAutoAppliedDiscount,
-        handleBumpSelect,
-        fetchProductDetails,
-        hydrateProduct,
-        fetchAllProducts,
-        setSelectedDistrict,
-        setEstimatedDays,
-      }}
-    >
+    <OrderContext.Provider value={value}>
       {children}
     </OrderContext.Provider>
   );

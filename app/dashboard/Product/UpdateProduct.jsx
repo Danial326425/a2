@@ -103,8 +103,15 @@ const UpdateProduct = ({
   }, []);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    // Checkboxes carry their state in `checked`, not `value` (which is "on"
+    // by default for unkeyed checkboxes). Without this branch, toggling a
+    // checkbox OFF actually set the field to the string "on" instead of false,
+    // so it could never be un-checked from the dashboard.
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
   };
 
   const handleHomepageChange = (e) => {
@@ -401,6 +408,35 @@ const UpdateProduct = ({
               max="1000"
             />
             <p className="text-xs text-gray-500 mt-1">Leave blank to use the global limit from Order Settings.</p>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                name="free_delivery_enabled"
+                checked={!!formData.free_delivery_enabled}
+                onChange={handleChange}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-gray-700 font-medium">Free Delivery on Bulk Purchase</span>
+            </label>
+            <p className="text-xs text-gray-500 mt-1 ml-6">Customer gets free delivery when they buy a minimum quantity of this product.</p>
+            {formData.free_delivery_enabled && (
+              <div className="mt-3 ml-6">
+                <label className="block text-gray-700 mb-1">Minimum Quantity for Free Delivery</label>
+                <input
+                  type="number"
+                  name="free_delivery_min_qty"
+                  value={formData.free_delivery_min_qty ?? ""}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g. 3"
+                  min="1"
+                  max="1000"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-4">

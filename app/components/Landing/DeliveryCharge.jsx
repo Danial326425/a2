@@ -13,7 +13,10 @@ const DeliveryCharge = ({ handleDeliveryChange, deliveryArea, setSelectedDeliver
             const firstArea = areas[0];
             setSelectedArea(firstArea);
             setSelectedDeliveryCharge(firstArea.delivery_charge);
-            handleDeliveryChange(firstArea.delivery_charge);
+            // Second arg (full area) is opt-in — old callers that take only the
+            // charge ignore it; new callers can use it to also update district name,
+            // estimated days, delivery note, etc.
+            handleDeliveryChange(firstArea.delivery_charge, firstArea);
         }
     }, [areas]);
 
@@ -21,7 +24,7 @@ const DeliveryCharge = ({ handleDeliveryChange, deliveryArea, setSelectedDeliver
     const handleAreaSelect = (area) => {
         setSelectedArea(area);
         setSelectedDeliveryCharge(area.delivery_charge);
-        handleDeliveryChange(area.delivery_charge);
+        handleDeliveryChange(area.delivery_charge, area);
     };
 
     return (

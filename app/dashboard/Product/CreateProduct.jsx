@@ -18,6 +18,7 @@ const imgOpts = { maxSizeMB: 2, maxWidthOrHeight: 2560, useWebWorker: true, file
 const CreateProduct = ({ onProductCreated }) => {
   const [formData, setFormData] = useState({
     name: "", price: "", discount_price: "", max_per_order: "",
+    free_delivery_enabled: false, free_delivery_min_qty: "",
     category_id: [], images: [],
     colors: [{ color: "", image: null, imagePreview: null, sizes: [{ size: "" }] }],
     bulk_discounts: [{ title: "", offer_quantity: "", discount_percentage: "" }],
@@ -61,8 +62,14 @@ const CreateProduct = ({ onProductCreated }) => {
 
   /* ── Image handlers ─────────────────────────────────────────────── */
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    // Checkboxes need `checked` (boolean), not `value` (which is the literal
+    // "on" string for unkeyed checkboxes). Bug fix: without this the
+    // free_delivery_enabled toggle couldn't be turned off after enabling.
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
   };
 
   const handleImagesChange = async (e) => {
@@ -219,6 +226,16 @@ const CreateProduct = ({ onProductCreated }) => {
   /* ── Submit ─────────────────────────────────────────────────────── */
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Guard: bulk free-delivery is only meaningful with a positive min qty.
+    if (formData.free_delivery_enabled) {
+      const n = parseInt(formData.free_delivery_min_qty, 10);
+      if (!Number.isFinite(n) || n < 1) {
+        setError("Free Delivery on Bulk Purchase enable করতে হলে Minimum Quantity (≥1) দিতে হবে");
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -227,6 +244,8 @@ const CreateProduct = ({ onProductCreated }) => {
     data.append("price", formData.price);
     data.append("discount_price", formData.discount_price || "");
     data.append("max_per_order", formData.max_per_order || "");
+    data.append("free_delivery_enabled", formData.free_delivery_enabled ? "1" : "0");
+    data.append("free_delivery_min_qty", formData.free_delivery_min_qty || "");
     formData.category_id.forEach((id, i) => data.append(`categories[${i}]`, id));
     data.append("has_upsell", showUpsell && formData.upsell_product_id ? "1" : "0");
     if (showUpsell && formData.upsell_product_id) {
@@ -430,6 +449,30 @@ const CreateProduct = ({ onProductCreated }) => {
             <FormField label="Max Qty per Order" hint="Leave blank to use the global limit from Order Settings">
               <Input type="number" name="max_per_order" value={formData.max_per_order} onChange={handleChange} placeholder="e.g. 5" min="1" max="1000" />
             </FormField>
+
+            <div className="pt-2 border-t border-gray-100">
+              <Toggle
+                id="free_delivery_enabled"
+                name="free_delivery_enabled"
+                checked={formData.free_delivery_enabled}
+                onChange={handleChange}
+                label="Free Delivery on Bulk Purchase"
+                description="Customer gets free delivery when they buy a minimum quantity of this product"
+              />
+              {formData.free_delivery_enabled && (
+                <FormField className="mt-3" label="Minimum Quantity for Free Delivery" required>
+                  <Input
+                    type="number"
+                    name="free_delivery_min_qty"
+                    value={formData.free_delivery_min_qty}
+                    onChange={handleChange}
+                    placeholder="e.g. 3"
+                    min="1"
+                    max="1000"
+                  />
+                </FormField>
+              )}
+            </div>
           </div>
         </SectionCard>
 
