@@ -1,101 +1,38 @@
-"use client";
+// Server component — exports SEO metadata for the storefront homepage.
+// All interactive UI lives in HomeClient (a sibling client component).
 
-import { useContext } from "react";
-import dynamic from "next/dynamic";
+import HomeClient from './HomeClient';
+import { buildSEO } from './lib/seo';
+import { config } from '@/config/config';
 
-import { ProductContext } from "@/app/context/ProductsContext";
+const SEO_REVALIDATE = 600; // seconds — admin can tweak the per-page SEO row infrequently
 
-// Heavy children — split out of the initial JS bundle so the homepage shell
-// hydrates faster. CategoryProducts pulls in react-slick, image-heavy lists,
-// and the cart panel; BannerSlider pulls slick CSS + JS.
-const BannerSlider = dynamic(() => import("@/app/components/BannerSlider"), {
-  loading: () => (
-    <div className="w-full aspect-[16/5] bg-gray-100 animate-pulse" />
-  ),
-});
-const Category = dynamic(() => import("@/app/components/Category"), {
-  loading: () => <CategorySkeleton />,
-});
-const CategoryProducts = dynamic(
-  () => import("@/app/components/CategoryProducts"),
-  { loading: () => <CategoryProductsSkeleton /> }
-);
-
-export default function Home() {
-  const { loading, banners } = useContext(ProductContext);
-
-  // Show a lightweight progressive skeleton instead of a full-screen spinner
-  // so visitors see structure immediately (better LCP / CLS perception).
-  if (loading) {
-    return <HomeSkeleton />;
+async function getHomeSeo() {
+  try {
+    const res = await fetch(`${config.apiUrl}/seo/home`, {
+      next: { revalidate: SEO_REVALIDATE },
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    // /seo/{pageKey} returns { field_key: value, ... } per SeoSetting model
+    return data?.data || data || {};
+  } catch {
+    return {};
   }
-
-  return (
-    <div className="bg-gray-50">
-      {banners?.length > 0 && <BannerSlider banners={banners} />}
-      <Category />
-      <CategoryProducts />
-    </div>
-  );
 }
 
-/* ── Lightweight skeleton primitives ───────────────────────────────────── */
-
-function HomeSkeleton() {
-  return (
-    <div className="bg-gray-50">
-      <div className="w-full aspect-[16/5] bg-gray-200 animate-pulse" />
-      <CategorySkeleton />
-      <CategoryProductsSkeleton />
-    </div>
-  );
+export async function generateMetadata() {
+  const s = await getHomeSeo();
+  return buildSEO({
+    title:       s.meta_title       || `${config.siteName} — Cash on Delivery Shopping in Bangladesh`,
+    description: s.meta_description || `Browse ${config.siteName}'s catalog of clothing, accessories, and lifestyle products. Fast cash-on-delivery shipping across Bangladesh.`,
+    keywords:    s.meta_keywords ? s.meta_keywords.split(',').map(k => k.trim()) : undefined,
+    image:       s.og_image,
+    path:        '/',
+    type:        'website',
+  });
 }
 
-function CategorySkeleton() {
-  return (
-    <div className="container mx-auto py-6 px-4">
-      <div className="mb-6 text-center space-y-2">
-        <div className="h-7 bg-gray-200 rounded w-48 mx-auto animate-pulse" />
-        <div className="h-4 bg-gray-100 rounded w-72 mx-auto animate-pulse" />
-      </div>
-      <div className="grid grid-cols-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="space-y-2">
-            <div className="aspect-square bg-gray-200 rounded-xl animate-pulse" />
-            <div className="h-3 bg-gray-200 rounded w-2/3 mx-auto animate-pulse" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CategoryProductsSkeleton() {
-  return (
-    <div className="bg-gray-50 pb-16">
-      <div className="container mx-auto py-8 px-4">
-        {Array.from({ length: 2 }).map((_, sec) => (
-          <section key={sec} className="mb-12">
-            <div className="flex justify-between items-center mb-6 border-b pb-2">
-              <div className="h-7 bg-gray-200 rounded w-40 animate-pulse" />
-              <div className="h-4 bg-gray-200 rounded w-16 animate-pulse" />
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
-                  <div className="aspect-square bg-gray-200" />
-                  <div className="p-3 space-y-2.5">
-                    <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto" />
-                    <div className="h-5 bg-gray-200 rounded w-1/3 mx-auto" />
-                    <div className="h-8 bg-gray-200 rounded mt-3" />
-                    <div className="h-8 bg-gray-200 rounded" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    </div>
-  );
+export default function Page() {
+  return <HomeClient />;
 }
