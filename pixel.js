@@ -6,10 +6,25 @@
 //   - Server CAPI    → fires via backend /fb-track endpoint (hashed PII)
 //   - Deduplication  → same event_id used for both browser + CAPI
 //   - Reliability    → fetch with keepalive survives page navigation/unload
+//
+// PageView policy (CRITICAL):
+//   - fbq('init') triggers Meta SDK's built-in PageView beacon (uncontrollable
+//     event_id, cannot be deduped with CAPI properly).
+//   - Meta SDK also auto-fires PageView on history.pushState (SPA navigation)
+//     by default — this is the source of the "extra browser PageView on
+//     navigate" bug.
+//   - We disable BOTH by setting fbq.disablePushState = true BEFORE init,
+//     AND by setting window._fbq.disablePushState = true. Then we manually
+//     fire ALL PageViews from PixelPageView with our own event_id.
 // =============================================================================
 
+const DEBUG = process.env.NODE_ENV === 'development';
+
+const log = (...args) => {
+  if (DEBUG) console.log('[Pixel]', ...args);
+};
+
 // ─── Unique Event ID ──────────────────────────────────────────────────────────
-// Generate one ID per event occurrence. Pass to BOTH browser fbq and CAPI.
 export const generateEventId = (prefix = 'ev') =>
   `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -21,10 +36,16 @@ const getCookie = (name) => {
   return parts.length === 2 ? parts.pop().split(';').shift() : null;
 };
 
-export const getFBC = () => getCookie('_fbc') || localStorage.getItem('fbc') || null;
-export const getFBP = () => getCookie('_fbp') || localStorage.getItem('fbp') || null;
+export const getFBC = () => {
+  if (typeof window === 'undefined') return null;
+  return getCookie('_fbc') || localStorage.getItem('fbc') || null;
+};
 
-// Generate + store fbc from ?fbclid= URL param (call once on page load).
+export const getFBP = () => {
+  if (typeof window === 'undefined') return null;
+  return getCookie('_fbp') || localStorage.getItem('fbp') || null;
+};
+
 export const generateFBC = () => {
   const existing = getCookie('_fbc');
   if (existing) return existing;
@@ -37,7 +58,6 @@ export const generateFBC = () => {
   return fbc;
 };
 
-// Format phone to E.164 (Facebook/CAPI standard for Bangladesh).
 export const formatPhoneForFacebook = (phone) => {
   if (!phone) return '';
   const digits = phone.replace(/\D/g, '');
@@ -48,80 +68,104 @@ export const formatPhoneForFacebook = (phone) => {
 };
 
 // ─── Pixel SDK Bootstrap ──────────────────────────────────────────────────────
-let pixelsInitialized = [];
-let sdkScriptInjected = false;
-
+// CRITICAL: We set disablePushState = true on the fbq stub BEFORE init runs.
+// This prevents Meta SDK from auto-firing PageView on history.pushState/popstate
+// events — which is exactly what happens during Next.js SPA navigation and
+// was causing the "extra browser PageView on navigate" bug.
+//
+// We also override the auto-PageView that fbq('init') itself fires by setting
+// the flag before init is queued.
 const ensurePixelSDK = () => {
-  if (typeof window === 'undefined' || window.fbq) return;
+  if (typeof window === 'undefined') return;
 
-  window.fbq = function () {
-    window.fbq.callMethod
-      ? window.fbq.callMethod.apply(window.fbq, arguments)
-      : window.fbq.queue.push(arguments);
-  };
-  if (!window._fbq) window._fbq = window.fbq;
-  window.fbq.push = window.fbq;
-  window.fbq.loaded = true;
-  window.fbq.version = '2.0';
-  window.fbq.queue = [];
+  // SDK script already injected — disablePushState flag is already set, nothing to do.
+  if (window.__fbqScriptInjected) return;
 
-  if (!sdkScriptInjected) {
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-    document.head.appendChild(script);
-    sdkScriptInjected = true;
+  // Another module / header_scripts already set up fbq — make sure pushState
+  // tracking is still disabled on it (idempotent).
+  if (window.fbq && window.__fbqScriptInjected === undefined) {
+    window.fbq.disablePushState = true;
+    if (window._fbq) window._fbq.disablePushState = true;
+    window.__fbqScriptInjected = true;
+    log('SDK already present (external source) — disablePushState forced');
+    return;
   }
+
+  // Set up the fbq stub that queues commands until the SDK loads.
+  if (!window.fbq) {
+    window.fbq = function () {
+      window.fbq.callMethod
+        ? window.fbq.callMethod.apply(window.fbq, arguments)
+        : window.fbq.queue.push(arguments);
+    };
+    if (!window._fbq) window._fbq = window.fbq;
+    window.fbq.push    = window.fbq;
+    window.fbq.loaded  = true;
+    window.fbq.version = '2.0';
+    window.fbq.queue   = [];
+
+    // ⚠ CRITICAL: must be set BEFORE any fbq('init') is queued, so the SDK
+    // reads this flag during its first run and skips auto-PageView fires
+    // on pushState/popstate (SPA navigation).
+    window.fbq.disablePushState  = true;
+    window._fbq.disablePushState = true;
+
+    log('fbq stub created (disablePushState = true)');
+  }
+
+  // Inject the FB Pixel SDK script once.
+  const script = document.createElement('script');
+  script.async = true;
+  script.src   = 'https://connect.facebook.net/en_US/fbevents.js';
+  document.head.appendChild(script);
+  window.__fbqScriptInjected = true;
+  log('SDK script injected');
 };
 
 // ─── Initialize Pixels ────────────────────────────────────────────────────────
-// Call once on App mount. Does NOT fire PageView — use trackBrowserEvent separately.
-// advancedMatch: { ph, em, fn, ln } — unhashed values, Facebook hashes client-side.
-export const initFacebookPixels = (pixelIds, advancedMatch = {}) => {
-  if (typeof window === 'undefined' || !Array.isArray(pixelIds)) return;
+// Idempotent — safe to call from anywhere, will only `fbq('init', id)` each
+// pixel ID exactly once per browser session (window guard).
+//
+// NOTE: fbq('init') normally fires a built-in PageView beacon, BUT we set
+// fbq.disablePushState = true in ensurePixelSDK BEFORE init runs, which also
+// suppresses that initial PageView. All PageViews come from PixelPageView's
+// explicit trackBrowserEvent call.
+export const initFacebookPixels = (pixelIds) => {
+  if (typeof window === 'undefined' || !Array.isArray(pixelIds) || !pixelIds.length) return;
 
   ensurePixelSDK();
 
-  const newPixelIds = pixelIds.map(String).filter(id => !pixelsInitialized.includes(id));
-  if (newPixelIds.length === 0) return;
+  // Use window-level set so module re-eval (HMR) doesn't reset the guard.
+  if (!window.__fbqPixelsInitialized) window.__fbqPixelsInitialized = [];
 
-  const matchData = {};
-  if (advancedMatch.ph) matchData.ph = advancedMatch.ph;
-  if (advancedMatch.em) matchData.em = advancedMatch.em;
-  if (advancedMatch.fn) matchData.fn = advancedMatch.fn;
-  if (advancedMatch.ln) matchData.ln = advancedMatch.ln;
+  const newIds = pixelIds
+    .map(String)
+    .filter(id => !window.__fbqPixelsInitialized.includes(id));
 
-  newPixelIds.forEach(pixelId => {
-    window.fbq('init', pixelId, matchData);
-    pixelsInitialized.push(pixelId);
+  if (!newIds.length) {
+    log('initFacebookPixels — all pixels already initialized, skipping');
+    return;
+  }
+
+  newIds.forEach(pixelId => {
+    window.fbq('init', pixelId);
+    window.__fbqPixelsInitialized.push(pixelId);
+    log(`fbq('init', '${pixelId}')`);
   });
 };
 
-// Update advanced matching for already-initialized pixels (call when user data is known).
-// e.g., on ThankYou page after we have customer phone/name.
-export const updateAdvancedMatching = (pixelIds, matchData = {}) => {
-  if (typeof window === 'undefined' || !window.fbq || !Array.isArray(pixelIds)) return;
-
-  const clean = {};
-  if (matchData.ph) clean.ph = matchData.ph;
-  if (matchData.em) clean.em = matchData.em;
-  if (matchData.fn) clean.fn = matchData.fn;
-  if (matchData.ln) clean.ln = matchData.ln;
-  if (!Object.keys(clean).length) return;
-
-  pixelIds.forEach(pixelId => window.fbq('init', String(pixelId), clean));
-};
+// updateAdvancedMatching is intentionally REMOVED from this export.
+// Calling fbq('init') a second time triggers a duplicate PageView beacon.
+// PII is passed to Facebook via CAPI userData (hashed server-side) instead.
 
 // ─── Browser Pixel Event ──────────────────────────────────────────────────────
-// Fires client-side pixel via fbq('trackSingle').
-// PII fields are stripped automatically — never send PII to browser pixel.
 export const trackBrowserEvent = (pixelIds, eventName, eventParams = {}, eventId) => {
   if (typeof window === 'undefined' || !window.fbq) return null;
   if (!Array.isArray(pixelIds) || !pixelIds.length) return null;
 
   const id = eventId || generateEventId(eventName.slice(0, 2).toLowerCase());
 
-  // Strip PII — these are handled server-side via CAPI
+  // Strip PII — these must only travel via CAPI (hashed server-side).
   const {
     phone, email, name, city, state,
     fbc, fbp, external_id,
@@ -136,13 +180,11 @@ export const trackBrowserEvent = (pixelIds, eventName, eventParams = {}, eventId
     }, { eventID: id });
   });
 
+  log(`trackBrowserEvent '${eventName}' eventId=${id}`, customData);
   return id;
 };
 
 // ─── CAPI Event (Server Side) ─────────────────────────────────────────────────
-// Sends to backend /fb-track which forwards to Facebook Conversions API.
-// Uses fetch + keepalive so the request survives page navigation / unload.
-// userData fields (phone, name, city, state) are hashed by the backend.
 export const sendCAPIEvent = (
   apiUrl,
   eventName,
@@ -151,13 +193,15 @@ export const sendCAPIEvent = (
   eventId,
   testEventCodes = []
 ) => {
+  if (typeof window === 'undefined') return;
+
   const payload = {
-    event: eventName,
-    event_id: eventId,
-    event_source_url: typeof window !== 'undefined' ? window.location.href : '',
-    event_time: Math.floor(Date.now() / 1000),
-    fbc: getFBC(),
-    fbp: getFBP(),
+    event:            eventName,
+    event_id:         eventId,
+    event_source_url: window.location.href,
+    event_time:       Math.floor(Date.now() / 1000),
+    fbc:              getFBC(),
+    fbp:              getFBP(),
     ...customData,
     ...userData,
   };
@@ -166,21 +210,19 @@ export const sendCAPIEvent = (
     payload.test_event_code = testEventCodes[0];
   }
 
-  // fetch with keepalive ensures the request completes even if the page navigates away.
-  // This prevents CAPI events from being cancelled when user submits a form / navigates.
+  log(`sendCAPIEvent '${eventName}' eventId=${eventId}`);
+
   if (typeof fetch !== 'undefined') {
     fetch(`${apiUrl}/fb-track`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(payload),
+      method:    'POST',
+      headers:   { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body:      JSON.stringify(payload),
       keepalive: true,
     }).catch(() => {});
   }
 };
 
 // ─── Hybrid Event (Browser + CAPI) ───────────────────────────────────────────
-// Fires BOTH browser pixel and CAPI with the SAME event_id for proper deduplication.
-// Facebook Events Manager will show one as "Processed" and the other as "Deduplicated".
 export const trackHybridEvent = ({
   pixelIds,
   apiUrl,
@@ -197,14 +239,13 @@ export const trackHybridEvent = ({
 };
 
 // ─── Legacy Compatibility ─────────────────────────────────────────────────────
-// Retained for backward compatibility. New code should use trackBrowserEvent.
 export const trackEventOnMultiplePixels = (pixelIds, eventName, eventParams = {}) => {
   if (typeof window === 'undefined' || !window.fbq || !Array.isArray(pixelIds)) return;
   const { event_id, ...rest } = eventParams;
   pixelIds.forEach(pixelId => {
     window.fbq('trackSingle', String(pixelId), eventName, {
       ...rest,
-      event_source_url: typeof window !== 'undefined' ? window.location.href : '',
+      event_source_url: window.location.href,
     }, { eventID: event_id });
   });
 };

@@ -41,6 +41,7 @@ const PAGE_TITLES = {
   createContactInfo: "Add Contact Info", contactInfoOverview: "Contact Info",
   createMenu: "Add Menu", menuOverview: "Menus",
   createSocial: "Add Social", socialOverview: "Social Links",
+  seoSettings: "SEO Settings",
 };
 
 const BREADCRUMB_PARENT = {
@@ -53,6 +54,7 @@ const BREADCRUMB_PARENT = {
   createPaymentMethod: "Payment Methods", createAdvancePay: "Advance Pay",
   createLogo: "Branding", createLegal: "Legal", createContact: "Contact",
   createContactInfo: "Contact Info", createMenu: "Menus", createSocial: "Social Links",
+  seoSettings: "Marketing",
 };
 
 // ─── Quick actions ──────────────────────────────────────────────────────────────

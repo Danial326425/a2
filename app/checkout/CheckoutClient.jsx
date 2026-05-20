@@ -37,7 +37,7 @@ export default function CheckoutPage() {
     districts: districtData,
   } = useContext(OrderContext);
 
-  const { pixel } = useContext(ProductContext);
+  const { pixel, testEventCode } = useContext(ProductContext);
 
   const [isSubmitting, setIsSubmitting]               = useState(false);
   const [divisions, setDivisions]                     = useState([]);
@@ -93,9 +93,9 @@ export default function CheckoutPage() {
       event_source_url: typeof window !== "undefined" ? window.location.href : "",
     };
     trackBrowserEvent(pixel, "InitiateCheckout", customData, eventId);
-    sendCAPIEvent(apiUrl, "InitiateCheckout", customData, {}, eventId, []);
+    sendCAPIEvent(apiUrl, "InitiateCheckout", customData, {}, eventId, testEventCode);
     trackingFired.current = true;
-  }, [pixel, items, cartTotal, apiUrl]);
+  }, [pixel, items, cartTotal, apiUrl, testEventCode]);
 
   /* ── Divisions / Districts loaders ────────────────────────────────────── */
   useEffect(() => {

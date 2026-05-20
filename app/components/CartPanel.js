@@ -7,7 +7,7 @@ import axios from 'axios';
 import { useCart } from '../context/CartContext';
 import { FaTimes, FaPlus, FaMinus, FaTrash, FaCheckCircle, FaGift } from 'react-icons/fa';
 import { config } from '@/config/config';
-import { trackEventOnMultiplePixels } from '@/pixel';
+import { trackHybridEvent, generateEventId } from '@/pixel';
 import { ProductContext } from '../context/ProductsContext';
 
 const apiUrl = config.apiUrl;
@@ -25,38 +25,44 @@ export default function CartPanel({ isOpen, toggleCart }) {
   } = useCart();
 
   const imageProxyUrl = '/api/storage';
-  const { pixel } = useContext(ProductContext);
+  const { pixel, testEventCode } = useContext(ProductContext);
 
   const hasTrackedCart = useRef(false);
   const previousItemsLength = useRef(0);
   const previousCartTotal = useRef(0);
 
   const trackAddToCartEvent = () => {
-    if (isEmpty || !pixel || pixel.length === 0) return;
+    if (isEmpty || !pixel?.length) return;
 
+    const eventId = generateEventId('ATC');
     const contents = items.map(item => ({
-      id: item.product_id || item.id,
-      item_id: item.product_id || item.id,
-      product_id: item.product_id || item.id,
+      id: String(item.product_id || item.id),
       quantity: item.quantity,
       item_price: parseFloat(item.price),
     }));
-
-    const contentIds = items.map(item => item.product_id || item.id);
+    const contentIds = items.map(item => String(item.product_id || item.id));
     const numItems = items.reduce((total, item) => total + item.quantity, 0);
 
-    if (typeof window !== 'undefined') {
-      trackEventOnMultiplePixels(pixel, 'AddToCart', {
-        content_ids: contentIds,
-        content_type: 'product_group',
-        contents: contents,
-        currency: 'BDT',
-        value: parseFloat(cartTotal.toFixed(2)),
-        num_items: numItems,
-        content_name: items.map(item => item.name).join(', ').substring(0, 100),
-        event_source_url: window.location.href,
-      });
-    }
+    const customData = {
+      content_ids: contentIds,
+      content_type: 'product_group',
+      contents,
+      currency: 'BDT',
+      value: parseFloat(cartTotal.toFixed(2)),
+      num_items: numItems,
+      content_name: items.map(item => item.name).join(', ').substring(0, 100),
+      event_source_url: typeof window !== 'undefined' ? window.location.href : '',
+    };
+
+    trackHybridEvent({
+      pixelIds: pixel,
+      apiUrl,
+      eventName: 'AddToCart',
+      customData,
+      userData: {},
+      testEventCodes: testEventCode,
+      eventId,
+    });
   };
 
   useEffect(() => {

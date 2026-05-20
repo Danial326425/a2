@@ -32,6 +32,8 @@ const ViewCategory = () => {
   const [formData, setFormData] = useState({
     name: "", image: null, sort_order: 0,
     product_limit: 10, parent_id: "", show_on_homepage: false, free_delivery: false,
+    meta_title: "", meta_description: "", meta_keywords: "",
+    og_image: null, og_image_preview: "", remove_og_image: "0",
   });
 
   useEffect(() => {
@@ -67,6 +69,12 @@ const ViewCategory = () => {
       product_limit: cat.product_limit, parent_id: cat.parent_id || "",
       show_on_homepage: cat.show_on_homepage,
       free_delivery: !!cat.free_delivery,
+      meta_title: cat.meta_title || "",
+      meta_description: cat.meta_description || "",
+      meta_keywords: cat.meta_keywords || "",
+      og_image: null,
+      og_image_preview: cat.og_image ? `${imageUrl}/${cat.og_image}` : "",
+      remove_og_image: "0",
     });
   };
 
@@ -97,6 +105,24 @@ const ViewCategory = () => {
     }
   };
 
+  const handleOgImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const blob = await imageCompression(file, imageCompressionOptions);
+      const compressed = new File(
+        [blob],
+        file.name.replace(/\.[^/.]+$/, "") + ".webp",
+        { type: "image/webp", lastModified: Date.now() }
+      );
+      const preview = URL.createObjectURL(compressed);
+      setFormData(prev => ({ ...prev, og_image: compressed, og_image_preview: preview, remove_og_image: "0" }));
+      setError(null);
+    } catch {
+      setError("Failed to compress OG image. Please try another.");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!editingCat) return;
@@ -108,7 +134,12 @@ const ViewCategory = () => {
     data.append("parent_id", formData.parent_id ? formData.parent_id.toString() : "");
     data.append("show_on_homepage", formData.show_on_homepage ? "1" : "0");
     data.append("free_delivery", formData.free_delivery ? "1" : "0");
+    data.append("meta_title", formData.meta_title || "");
+    data.append("meta_description", formData.meta_description || "");
+    data.append("meta_keywords", formData.meta_keywords || "");
+    data.append("remove_og_image", formData.remove_og_image || "0");
     if (formData.image) data.append("image", formData.image);
+    if (formData.og_image) data.append("og_image", formData.og_image);
     try {
       await axios.post(`${apiUrl}/categoryupdate/${editingCat}`, data, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -272,6 +303,7 @@ const ViewCategory = () => {
                 <UpdateCategory
                   formData={formData}
                   handleImageChange={handleImageChange}
+                  handleOgImageChange={handleOgImageChange}
                   handleChange={handleChange}
                   handleSubmit={handleSubmit}
                   onCancel={() => setEditingCat(null)}

@@ -11,6 +11,7 @@ import {
   FileUpload, MultiFileUpload, ActionBtn, ErrorBanner, SuccessAlert,
   FormGrid, RepeatableItem,
 } from "../../components/Dashboard/DashUI";
+import ProductSeoSection, { appendSeoToFormData, emptySeo, slugifyProduct } from "./ProductSeoSection";
 
 const apiUrl = config.apiUrl;
 const imgOpts = { maxSizeMB: 2, maxWidthOrHeight: 2560, useWebWorker: true, fileType: "image/webp", initialQuality: 0.95 };
@@ -20,6 +21,7 @@ const CreateProduct = ({ onProductCreated }) => {
     name: "", price: "", discount_price: "", max_per_order: "",
     free_delivery_enabled: false, free_delivery_min_qty: "",
     category_id: [], images: [],
+    slug: "", slugEdited: false, seo: { ...emptySeo },
     colors: [{ color: "", image: null, imagePreview: null, sizes: [{ size: "" }] }],
     bulk_discounts: [{ title: "", offer_quantity: "", discount_percentage: "" }],
     bumps: [{ bump_price: "", title: "", image: null, description: "" }],
@@ -66,10 +68,14 @@ const CreateProduct = ({ onProductCreated }) => {
     // Checkboxes need `checked` (boolean), not `value` (which is the literal
     // "on" string for unkeyed checkboxes). Bug fix: without this the
     // free_delivery_enabled toggle couldn't be turned off after enabling.
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+    setFormData(prev => {
+      const next = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value,
+      };
+      if (name === "name" && !prev.slugEdited) next.slug = slugifyProduct(value);
+      return next;
+    });
   };
 
   const handleImagesChange = async (e) => {
@@ -241,6 +247,7 @@ const CreateProduct = ({ onProductCreated }) => {
 
     const data = new FormData();
     data.append("name", formData.name);
+    data.append("slug", formData.slug || slugifyProduct(formData.name));
     data.append("price", formData.price);
     data.append("discount_price", formData.discount_price || "");
     data.append("max_per_order", formData.max_per_order || "");
@@ -298,6 +305,7 @@ const CreateProduct = ({ onProductCreated }) => {
         }
       });
     }
+    appendSeoToFormData(data, formData.seo);
 
     try {
       await axios.post(`${apiUrl}/products`, data, { headers: { "Content-Type": "multipart/form-data" } });
@@ -772,6 +780,12 @@ const CreateProduct = ({ onProductCreated }) => {
         )}
 
         {/* ── Submit ───────────────────────────────────────────── */}
+        <ProductSeoSection
+          formData={formData}
+          setFormData={setFormData}
+          productMainImage={imagePreviews[0] || null}
+        />
+
         <div className="flex justify-end">
           <ActionBtn type="submit" variant="primary" loading={submitting} size="lg">
             Create Product

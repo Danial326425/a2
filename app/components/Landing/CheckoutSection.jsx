@@ -7,7 +7,6 @@ import { ProductContext } from "../../context/ProductsContext";
 import bdLocations from "../../data/locations";
 import { useParams, useRouter } from "next/navigation";
 import { trackBrowserEvent, sendCAPIEvent, generateEventId } from "@/pixel";
-import { track } from "../../lib/tracking";
 import DeliveryCharge from "./DeliveryCharge";
 import CouponBox from "../CouponBox";
 import {
@@ -395,7 +394,6 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
       ([entry]) => {
         if (entry.isIntersecting && !checkoutViewFired.current) {
           checkoutViewFired.current = true;
-          track('checkout_view', slug);
           observer.disconnect();
         }
       },
@@ -554,7 +552,6 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
         body: JSON.stringify(orderData)
       });
       if (res.ok) {
-        track('order', slug);
         // Wipe the per-slug draft + global checkout draft so back-nav doesn't
         // resurrect already-submitted data.
         try {

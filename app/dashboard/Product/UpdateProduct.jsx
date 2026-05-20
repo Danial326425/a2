@@ -5,6 +5,7 @@ import { ImCross } from "react-icons/im";
 import axios from "axios";
 import QuillEditor from "../../components/QuillEditor";
 import { config } from "../../../config";
+import ProductSeoSection, { slugifyProduct } from "./ProductSeoSection";
 
 const apiUrl = config.apiUrl;
 
@@ -29,6 +30,8 @@ const UpdateProduct = ({
   showUpsell,
   setShowUpsell,
   upsellProducts = [],
+  productId,
+  productMainImage,
 }) => {
   const [addOffer, setAddOffer]               = useState(!!formData.discount_price);
   const [addColors, setAddColors]             = useState(formData.colors.length > 0);
@@ -108,10 +111,15 @@ const UpdateProduct = ({
     // by default for unkeyed checkboxes). Without this branch, toggling a
     // checkbox OFF actually set the field to the string "on" instead of false,
     // so it could never be un-checked from the dashboard.
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+    setFormData(prev => {
+      const next = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value,
+      };
+      if (name === "slug") next.slugEdited = true;
+      if (name === "name" && !prev.slugEdited) next.slug = slugifyProduct(value);
+      return next;
+    });
   };
 
   const handleHomepageChange = (e) => {
@@ -998,6 +1006,13 @@ const UpdateProduct = ({
               </button>
             </div>
           )}
+
+          <ProductSeoSection
+            formData={formData}
+            setFormData={setFormData}
+            productId={productId}
+            productMainImage={productMainImage}
+          />
 
           <div className="flex justify-end space-x-3 pt-4">
             <button

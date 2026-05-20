@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import axios from 'axios';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import { trackBrowserEvent, sendCAPIEvent, updateAdvancedMatching, generateEventId, formatPhoneForFacebook } from '@/pixel';
+import { trackBrowserEvent, sendCAPIEvent, generateEventId, formatPhoneForFacebook } from '@/pixel';
 import { FaCheckCircle, FaShoppingBag, FaUserAlt, FaTruck, FaPlusCircle, FaMinusCircle, FaGift } from 'react-icons/fa';
 import { HeaderContext } from '@/app/context/HeaderContext';
 import { ProductContext } from '@/app/context/ProductsContext';
@@ -567,7 +567,6 @@ export default function ThankYou() {
     const eventName = isPurchase ? 'Purchase' : 'Lead';
     const eventId = orderDetails?.order_id || generateEventId(eventName.slice(0, 2));
 
-    if (formattedPhone) updateAdvancedMatching(pixel, { ph: formattedPhone });
 
     const customData = {
       value: orderValue,

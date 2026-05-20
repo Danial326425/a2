@@ -6,6 +6,7 @@ import { config } from "../../../config";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import UpdateProduct from "./UpdateProduct";
+import { appendSeoToFormData, emptySeo } from "./ProductSeoSection";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -40,6 +41,7 @@ const ViewProduct = () => {
     name: "", price: "", discount_price: "", max_per_order: "",
     free_delivery_enabled: false, free_delivery_min_qty: "",
     category_id: [], clothing: false,
+    slug: "", slugEdited: false, seo: { ...emptySeo },
     images: [], colors: [{ color: "", image: null, sizes: [{ size: "" }] }],
     bulk_discounts: [{ title: "", offer_quantity: "", discount_percentage: "" }],
     bumps: [{ title: "", bump_price: "", image: null, description: "" }],
@@ -98,6 +100,7 @@ const ViewProduct = () => {
     setEditingProduct(product.id);
     setFormData({
       slug: product.slug || "",
+      slugEdited: true,
       name: product.name || "",
       price: product.price || "",
       discount_price: product.discount_price || "",
@@ -123,6 +126,13 @@ const ViewProduct = () => {
       homepage: product.homepage || { headline: "", paragraph: "", description: "" },
       has_upsell: !!product.has_upsell,
       upsell_product_id: product.upsell_product_id ? String(product.upsell_product_id) : "",
+      seo: {
+        ...emptySeo,
+        ...(product.seo || {}),
+        og_image_existing: product.seo?.og_image || "",
+        twitter_image_existing: product.seo?.twitter_image || "",
+        og_image_source: product.seo?.og_image_source || (product.seo?.og_image ? "custom" : "global"),
+      },
     });
     setShowHomepageFields(!!product.homepage);
     setShowBulkDiscounts(product.bulk_discounts?.length > 0);
@@ -248,6 +258,7 @@ const ViewProduct = () => {
           data.append(`colors[${i}][sizes][${si}][size]`, s.size || "");
         });
       });
+      appendSeoToFormData(data, formData.seo);
 
       await axios.post(`${apiUrl}/productsupdate/${editingProduct}`, data, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -587,6 +598,8 @@ const ViewProduct = () => {
                   showUpsell={showUpsell}
                   setShowUpsell={setShowUpsell}
                   upsellProducts={upsellProducts}
+                  productId={editingProduct}
+                  productMainImage={getFirstImage(formData)}
                 />
               </div>
             </motion.div>

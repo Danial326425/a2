@@ -38,6 +38,7 @@ import {
   PanelLeft,
   X,
   MenuIcon,
+  Search,
 } from "lucide-react";
 import axios from "axios";
 import { config } from "@/config/config";
@@ -192,6 +193,12 @@ const MENU_GROUPS = [
         icon: Activity,
         key: "ownTracking",
         directItem: "trackingOverview",
+      },
+      {
+        title: "SEO Settings",
+        icon: Search,
+        key: "seo",
+        directItem: "seoSettings",
       },
     ],
   },
@@ -379,6 +386,7 @@ const ROLE_ACCESS = {
     },
     pixel: { pixelSub: ["createPixel", "PixelOverview"] },
     ownTracking: ["trackingOverview"],
+    seo: ["seoSettings"],
     coupons: { couponsSub: ["createCoupon", "couponOverview"] },
     cartRewards: { cartRewardsSub: ["createCartReward", "cartRewardOverview"] },
     steadfast: { steadfastSub: ["createSteadfast", "steadfastOverview"] },

@@ -1,38 +1,72 @@
-// Server component — exports SEO metadata for the storefront homepage.
-// All interactive UI lives in HomeClient (a sibling client component).
+// Server component — exports SEO metadata + JSON-LD for the storefront
+// homepage. All interactive UI lives in HomeClient (a sibling client comp).
 
 import HomeClient from './HomeClient';
+import JsonLd from './components/seo/JsonLd';
 import { buildSEO } from './lib/seo';
+import { getGlobalSeo } from './lib/seo/getGlobalSeo';
 import { config } from '@/config/config';
 
-const SEO_REVALIDATE = 600; // seconds — admin can tweak the per-page SEO row infrequently
-
-async function getHomeSeo() {
-  try {
-    const res = await fetch(`${config.apiUrl}/seo/home`, {
-      next: { revalidate: SEO_REVALIDATE },
-    });
-    if (!res.ok) return {};
-    const data = await res.json();
-    // /seo/{pageKey} returns { field_key: value, ... } per SeoSetting model
-    return data?.data || data || {};
-  } catch {
-    return {};
-  }
-}
-
 export async function generateMetadata() {
-  const s = await getHomeSeo();
+  const seo = await getGlobalSeo();
+  // Dashboard field keys: `site_title` (brand), `title` (meta title),
+  // `description`, `keywords` — match exactly what BasicSeoTab persists.
   return buildSEO({
-    title:       s.meta_title       || `${config.siteName} — Cash on Delivery Shopping in Bangladesh`,
-    description: s.meta_description || `Browse ${config.siteName}'s catalog of clothing, accessories, and lifestyle products. Fast cash-on-delivery shipping across Bangladesh.`,
-    keywords:    s.meta_keywords ? s.meta_keywords.split(',').map(k => k.trim()) : undefined,
-    image:       s.og_image,
+    title:       seo.title       || seo.site_title || `${config.siteName} — Cash on Delivery Shopping in Bangladesh`,
+    description: seo.description || `Browse ${config.siteName}'s catalog of clothing, accessories, and lifestyle products. Fast cash-on-delivery shipping across Bangladesh.`,
+    keywords:    seo.keywords ? String(seo.keywords).split(',').map(k => k.trim()).filter(Boolean) : undefined,
+    image:       seo.og_image,
     path:        '/',
     type:        'website',
   });
 }
 
-export default function Page() {
-  return <HomeClient />;
+export default async function Page() {
+  const seo = await getGlobalSeo();
+  const orgName = seo.site_title || config.siteName;
+  const orgLogo = seo.og_image
+    ? `${config.backendUrl}/storage/${seo.og_image}`
+    : `${config.siteUrl}/og-default.png`;
+
+  // Organization schema — populates Google's brand panel.
+  const organization = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: orgName,
+    url: config.siteUrl,
+    logo: orgLogo,
+    ...(seo.twitter_username || seo.facebook_app_id
+      ? {
+          sameAs: [
+            seo.twitter_username && `https://twitter.com/${String(seo.twitter_username).replace('@', '')}`,
+            seo.facebook_app_id && `https://facebook.com/${seo.facebook_app_id}`,
+          ].filter(Boolean),
+        }
+      : {}),
+  };
+
+  // WebSite schema with SearchAction — enables the sitelinks search box in
+  // Google results.
+  const website = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: orgName,
+    url: config.siteUrl,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${config.siteUrl}/shop?search={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+
+  return (
+    <>
+      <JsonLd data={organization} />
+      <JsonLd data={website} />
+      <HomeClient />
+    </>
+  );
 }

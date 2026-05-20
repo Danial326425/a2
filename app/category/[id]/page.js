@@ -23,6 +23,7 @@ async function getCategory(id) {
 export async function generateMetadata({ params }) {
   const { id } = await params;
   const cat = await getCategory(id);
+
   if (!cat) {
     return buildSEO({
       title: 'Category Not Found',
@@ -30,12 +31,19 @@ export async function generateMetadata({ params }) {
       path: `/category/${id}`,
     });
   }
+
+  const title       = cat.meta_title       || `${cat.name} Collection`;
+  const description = cat.meta_description || `Shop ${cat.name} at ${config.siteName} — fast cash-on-delivery across Bangladesh. Discover the latest ${cat.name} products curated for you.`;
+  const keywords    = cat.meta_keywords    ? cat.meta_keywords.split(',').map(k => k.trim()).filter(Boolean) : undefined;
+  const image       = cat.og_image         || cat.image;
+
   return buildSEO({
-    title:       `${cat.name} Collection`,
-    description: `Shop ${cat.name} at ${config.siteName} — fast cash-on-delivery across Bangladesh. Discover the latest ${cat.name} products curated for you.`,
-    image:       cat.image,
-    path:        `/category/${id}`,
-    type:        'website',
+    title,
+    description,
+    keywords,
+    image,
+    path:  `/category/${id}`,
+    type:  'website',
   });
 }
 

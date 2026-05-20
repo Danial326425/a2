@@ -8,7 +8,6 @@ import {
   trackBrowserEvent,
   sendCAPIEvent,
   formatPhoneForFacebook,
-  updateAdvancedMatching,
 } from "@/pixel";
 
 import UpsellHeader    from "@/app/components/upsell/UpsellHeader";
@@ -146,7 +145,6 @@ export default function UpsellPage() {
     const eventId = `API_${customer.order_id}_${Date.now()}`;
     const offerPrice = Number(product.offer_price) || 0;
 
-    if (formattedPhone) updateAdvancedMatching(pixel, { ph: formattedPhone });
 
     const customData = {
       value:        offerPrice,

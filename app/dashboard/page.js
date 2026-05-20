@@ -67,6 +67,7 @@ const CreateCoupon        = dynamic(() => import("./Coupon/CreateCoupon"), { ssr
 const ViewCoupon          = dynamic(() => import("./Coupon/ViewCoupon"), { ssr: false });
 const CreateCartReward    = dynamic(() => import("./CartReward/CreateCartReward"), { ssr: false });
 const ViewCartReward      = dynamic(() => import("./CartReward/ViewCartReward"), { ssr: false });
+const SeoSettingsPage     = dynamic(() => import("./SeoSettings/SeoSettingsPage"), { ssr: false });
 
 
 const Dashboard = () => {
@@ -148,6 +149,7 @@ const Dashboard = () => {
         "transactionOverview", "usersOverview", "dashboard", "leadOverview","createPaymentMethod",
         "paymentMethodOverview", "createCommunity", "communityOverview", "createAdvancePay", "advancePayOverview","createBanner", "bannerOverview", "createLandingPage","landingPageOverview",
         "trackingOverview",
+        "seoSettings",
         "createUpsellProduct", "upsellProductOverview", "upsellSettings",
         "variationLibrary", "orderSettings",
         "createCoupon", "couponOverview", "createCartReward", "cartRewardOverview"
@@ -276,6 +278,8 @@ const Dashboard = () => {
 
       case "trackingOverview":
         return <OwnTracking />;
+      case "seoSettings":
+        return <SeoSettingsPage />;
 
       case "createUpsellProduct":
         return <CreateUpsellProduct onCreated={() => setSelectedMenu('upsellProductOverview')} onCancel={() => setSelectedMenu('upsellProductOverview')} />;

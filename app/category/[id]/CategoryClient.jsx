@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useContext, useMemo, useState } from 'react';
+import React, { useEffect, useContext, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import axios from 'axios';
 import { FaShoppingCart } from 'react-icons/fa';
-import { initFacebookPixels, trackEventOnMultiplePixels } from '@/pixel';
+import { trackHybridEvent, generateEventId } from '@/pixel';
 import { ProductContext } from '../../context/ProductsContext';
 import { useCart } from '../../context/CartContext';
 import ProductCard from '../../components/ProductCard';
@@ -21,7 +21,7 @@ export default function SingleCategory() {
   const params = useParams();
   const categoryId = Number(params.id);
 
-  const { pixel, apiUrl, products, loading: contextLoading } = useContext(ProductContext);
+  const { pixel, apiUrl, testEventCode, products, loading: contextLoading } = useContext(ProductContext);
   const { totalItems } = useCart();
 
   const [category, setCategory]   = useState(null);
@@ -50,16 +50,28 @@ export default function SingleCategory() {
       .reverse();
   }, [products, categoryId]);
 
+  const viewCategoryFired = useRef(false);
+
   // Pixel: fires once when both pixel + category name are available.
   useEffect(() => {
-    if (pixel?.length > 0 && category?.name) {
-      initFacebookPixels(pixel);
-      trackEventOnMultiplePixels(pixel, 'ViewCategory', {
+    if (!pixel?.length || !category?.name || viewCategoryFired.current) return;
+    viewCategoryFired.current = true;
+
+    const eventId = generateEventId('VC');
+    trackHybridEvent({
+      pixelIds: pixel,
+      apiUrl,
+      eventName: 'ViewCategory',
+      customData: {
         content_name: category.name,
         content_category: category.name,
-      });
-    }
-  }, [pixel, category?.name]);
+        event_source_url: typeof window !== 'undefined' ? window.location.href : '',
+      },
+      userData: {},
+      testEventCodes: testEventCode,
+      eventId,
+    });
+  }, [pixel, category?.name, apiUrl, testEventCode]);
 
   const loading = catLoading || (contextLoading && categoryProducts.length === 0);
 

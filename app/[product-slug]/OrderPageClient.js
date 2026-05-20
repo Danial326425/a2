@@ -13,8 +13,7 @@ import { OrderContext, clearCheckoutDraft } from '../context/OrderContext';
 import axios from 'axios';
 import { HeaderContext } from '../context/HeaderContext';
 import { ProductContext } from '../context/ProductsContext';
-import { trackBrowserEvent, sendCAPIEvent, generateEventId } from '../lib/pixel';
-import { track } from '../lib/tracking';
+import { trackBrowserEvent, sendCAPIEvent, generateEventId } from '@/pixel';
 import bdLocations from '../data/locations';
 import { useCart } from '../context/CartContext';
 import DeliveryCharge from '../components/Landing/DeliveryCharge';
@@ -482,10 +481,6 @@ useEffect(() => {
   viewContentTracked.current = true;
 }, [products?.id, pixel]);
 
-// Own tracking — page_view fires once per session per slug
-useEffect(() => {
-  if (slug) track('page_view', slug);
-}, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
 const [checkoutTracked, setCheckoutTracked] = useState(false);
 const fireInitiateCheckout = () => {
@@ -514,7 +509,6 @@ const handleOpenFormModal = () => {
 
   // InitiateCheckout ট্র্যাকিং ফাংশন কল
   fireInitiateCheckout();
-  track('checkout_view', slug);
   
   // স্ক্রল এবং ফোকাস লজিক
   setTimeout(() => {
@@ -904,7 +898,6 @@ const handleAddToCart = (product) => {
       }));
 
       setDataSaved(true);
-      track('order', slug);
       // Order succeeded — wipe the draft so a back-nav doesn't repopulate the
       // form with already-submitted data. Soft-nav keeps context tree alive.
       clearCheckoutDraft();

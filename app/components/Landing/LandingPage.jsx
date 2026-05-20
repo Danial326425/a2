@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../lib/api';
-import { track } from '../../lib/tracking';
 import CheckoutSection from './CheckoutSection';
 import CheckoutModal from './CheckoutModal';
 import Footer from '../../components/Footer';
@@ -94,12 +93,7 @@ const LandingPage = () => {
     return () => { cancelled = true; };
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fire page_view tracking once per session per slug
-  useEffect(() => {
-    if (slug) track('page_view', slug);
-  }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Show sticky CTA after user scrolls 300px
+// Show sticky CTA after user scrolls 300px
   useEffect(() => {
     const onScroll = () => setShowStickyCTA(window.scrollY > 300);
     window.addEventListener('scroll', onScroll, { passive: true });

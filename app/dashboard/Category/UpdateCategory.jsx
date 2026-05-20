@@ -1,10 +1,10 @@
 import React from "react";
 import {
-  FormField, Input, Select, ActionBtn, ErrorBanner, Toggle, FileUpload,
+  FormField, Input, Textarea, Select, ActionBtn, ErrorBanner, Toggle, FileUpload,
 } from "../../components/Dashboard/DashUI";
 
 const UpdateCategory = ({
-  formData, handleImageChange, handleChange, handleSubmit,
+  formData, handleImageChange, handleOgImageChange, handleChange, handleSubmit,
   onCancel, loading, error, categories, editingCat,
 }) => (
   <form onSubmit={handleSubmit} className="space-y-5">
@@ -76,6 +76,70 @@ const UpdateCategory = ({
         inputName="image"
       />
     </FormField>
+
+    {/* ── SEO Section ─────────────────────────────────────────────────── */}
+    <div className="border-t border-gray-100 pt-5">
+      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">SEO Settings</p>
+
+      <div className="space-y-4">
+        <FormField label="Meta Title" hint="Shown in browser tab and Google results. Leave blank to use category name.">
+          <Input
+            name="meta_title"
+            value={formData.meta_title || ""}
+            onChange={handleChange}
+            placeholder={`${formData.name || "Category"} — ${typeof window !== "undefined" ? "" : ""}`}
+            maxLength={70}
+          />
+          <p className="text-xs text-gray-400 mt-1">{(formData.meta_title || "").length}/70 characters</p>
+        </FormField>
+
+        <FormField label="Meta Description" hint="Shown below the title in Google results. 120–160 characters recommended.">
+          <Textarea
+            name="meta_description"
+            value={formData.meta_description || ""}
+            onChange={handleChange}
+            placeholder="Describe this category for search engines..."
+            rows={3}
+            maxLength={160}
+          />
+          <p className="text-xs text-gray-400 mt-1">{(formData.meta_description || "").length}/160 characters</p>
+        </FormField>
+
+        <FormField label="Meta Keywords" hint="Comma-separated keywords (optional).">
+          <Input
+            name="meta_keywords"
+            value={formData.meta_keywords || ""}
+            onChange={handleChange}
+            placeholder="e.g. electronics, gadgets, mobile"
+          />
+        </FormField>
+
+        <FormField label="OG Image" hint="Image shown when this category is shared on Facebook/WhatsApp. 1200×630px recommended. Leave blank to use category image.">
+          {formData.og_image_preview && (
+            <div className="mb-2 flex items-center gap-3">
+              <img
+                src={formData.og_image_preview}
+                alt="OG preview"
+                className="h-16 w-28 rounded object-cover border border-gray-200"
+              />
+              <button
+                type="button"
+                onClick={() => handleChange({ target: { name: "remove_og_image", value: "1", type: "text" } })}
+                className="text-xs text-red-500 hover:text-red-700"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+          <FileUpload
+            onChange={handleOgImageChange}
+            hint="PNG, JPG · 1200×630px recommended"
+            height="h-24"
+            inputName="og_image"
+          />
+        </FormField>
+      </div>
+    </div>
 
     <div className="flex justify-end gap-3 pt-2">
       <ActionBtn type="button" variant="secondary" onClick={onCancel} disabled={loading}>Cancel</ActionBtn>
