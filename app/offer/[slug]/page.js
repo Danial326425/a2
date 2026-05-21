@@ -47,7 +47,7 @@ export async function generateMetadata({ params }) {
     keywords:    seo.meta_keywords ? String(seo.meta_keywords).split(',').map(k => k.trim()) : undefined,
     image:       pickOgImage(landing),
     path:        `/offer/${slug}`,
-    type:        'product',
+    type:        'website',
     price:       product.price ? { amount: product.discount_price || product.price, currency: 'BDT' } : undefined,
     availability: 'in stock',
   });

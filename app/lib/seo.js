@@ -20,7 +20,7 @@
  *       description: product.short_description,
  *       image:       product.image,
  *       path:        `/${product.slug}`,
- *       type:        'product',
+ *       type:        'website',
  *       price:       { amount: product.price, currency: 'BDT' },
  *     });
  *   }
@@ -73,7 +73,7 @@ function buildTitle(title) {
  * @param {string}  [opts.description]      — auto-clamped to 160 chars
  * @param {string}  [opts.image]            — full URL, relative path, or storage path
  * @param {string}  [opts.path]             — site-relative path, defaults to '/'
- * @param {string}  [opts.type]             — og:type (website|article|product)
+ * @param {string}  [opts.type]             — og:type (website|article) — 'product' is not a valid OG type
  * @param {boolean} [opts.noindex]          — adds noindex,nofollow
  * @param {string[]}[opts.keywords]
  * @param {string}  [opts.locale]           — defaults to config.defaultLocale

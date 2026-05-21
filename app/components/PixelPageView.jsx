@@ -41,7 +41,7 @@ import {
   generateEventId,
 } from '@/pixel';
 
-const SKIP_PREFIXES = ['/dashboard', '/editor', '/login', '/register', '/offer'];
+const SKIP_PREFIXES = ['/dashboard', '/editor', '/login', '/register'];
 
 const isDev = process.env.NODE_ENV === 'development';
 const log   = (...args) => { if (isDev) console.log('[PixelPageView]', ...args); };

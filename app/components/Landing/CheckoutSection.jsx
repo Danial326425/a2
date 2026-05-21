@@ -365,10 +365,16 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
   }, [isModal]);
 
   // ── ViewContent tracking ─────────────────────────────────────────────────────
+  // Window-level flag prevents double-fire when CheckoutModal renders both a
+  // mobile and a desktop <CheckoutSection> simultaneously (both mount, both
+  // would fire independently via their own per-instance refs).
   const viewContentFired = useRef(false);
   useEffect(() => {
     if (!data?.product || !pixel?.length || viewContentFired.current) return;
+    const winKey = `__vc_fired_${data.product.id}`;
+    if (typeof window !== 'undefined' && window[winKey]) return;
     viewContentFired.current = true;
+    if (typeof window !== 'undefined') window[winKey] = true;
 
     const eventId     = generateEventId('VC');
     const productPrice = Math.round(data.product.discount_price || data.product.price);

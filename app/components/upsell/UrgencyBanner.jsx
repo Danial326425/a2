@@ -7,11 +7,12 @@ export default function UrgencyBanner({ config }) {
   const bgColor   = u.bg_color   ?? '#EF4444';
   const textColor = u.text_color ?? '#ffffff';
   const text      = u.text       ?? '🔥 সীমিত সময়ের অফার';
+  const fontSize  = u.font_size  ?? '14px';
 
   return (
     <div
-      className="px-4 py-2 text-center text-sm font-bold"
-      style={{ backgroundColor: bgColor, color: textColor }}
+      className="px-4 py-2 text-center font-bold"
+      style={{ backgroundColor: bgColor, color: textColor, fontSize }}
     >
       <span className="inline-flex items-center gap-1 animate-pulse">
         {text}
