@@ -13,6 +13,16 @@ const nextConfig = {
         port: '8000',
         pathname: '/storage/**',
       },
+      {
+        protocol: 'https',
+        hostname: '**',
+        pathname: '/storage/**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+        pathname: '/storage/**',
+      },
     ],
     localPatterns: [
       {

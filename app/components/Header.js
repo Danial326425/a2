@@ -88,11 +88,11 @@ export default function Header() {
                 <Image
                   src={`${apiStorageUrl}/${logo}`}
                   alt="Logo"
-                  width={40}
-                  height={40}
+                  width={160}
+                  height={60}
                   className="h-10 w-auto"
                   priority
-                  sizes="40px"
+                  sizes="160px"
                 />
               </Link>
 
@@ -119,11 +119,11 @@ export default function Header() {
                 <Image
                   src={`${apiStorageUrl}/${logo}`}
                   alt="Logo"
-                  width={48}
-                  height={48}
+                  width={200}
+                  height={64}
                   className="h-12 w-auto"
                   priority
-                  sizes="48px"
+                  sizes="200px"
                 />
               </Link>
 
