@@ -95,6 +95,7 @@ const ViewCustomer = () => {
     { key: 'hold', label: 'Hold' },
     { key: 'blocked', label: 'Blocked' },
     { key: 'partial_delivered', label: 'Partial Delivered' },
+    { key: 'approval_pending', label: 'Approval Pending' },
     { key: 'in_transit', label: 'In Transit' },
     { key: 'spam', label: '🚫 Spam' },
   ];
@@ -629,6 +630,14 @@ const ViewCustomer = () => {
           case 'partial_delivered':
             mappedStatus = 'Partial Delivered';
             break;
+          case 'delivered_approval_pending':
+          case 'partial_delivered_approval_pending':
+          case 'cancelled_approval_pending':
+          case 'unknown_approval_pending':
+          case 'unknown':
+          case 'hold':
+            mappedStatus = 'Approval Pending';
+            break;
           default:
             mappedStatus = rawStatus;
         }
@@ -1017,7 +1026,6 @@ const ViewCustomer = () => {
         <div className="mb-6 border-b border-gray-200 overflow-x-auto">
           <nav className="-mb-px flex space-x-4 whitespace-nowrap">
             {tabs.map(tab => {
-              // Tab Navigation section-এ count calculation ঠিক করুন
               const count = applications.filter(app => {
                 if (tab.key === 'all') return true;
                 if (tab.key === 'new_order') {
@@ -1028,13 +1036,13 @@ const ViewCustomer = () => {
                 if (tab.key === 'spam') {
                   return !!app.is_spam || isSteadfastSpam(app.phone_number);
                 }
-
-                // Ready to Ship এবং Ready to Delivery এর জন্য সঠিক comparison
                 const expectedStatus = tab.key.replace(/_/g, ' ').toLowerCase();
                 const actualStatus = app.delivery_status ? app.delivery_status.toLowerCase() : '';
-
                 return actualStatus === expectedStatus;
               }).length;
+
+              const showPct = ['delivered', 'cancelled', 'return', 'partial_delivered'].includes(tab.key) && applications.length > 0;
+              const pct = showPct ? Math.round((count / applications.length) * 100) : null;
 
               return (
                 <button
@@ -1045,7 +1053,7 @@ const ViewCustomer = () => {
                   }}
                   className={`py-3 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === tab.key ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                 >
-                  {tab.label} ({count})
+                  {tab.label} ({count}{pct !== null ? ` · ${pct}%` : ''})
                 </button>
               );
             })}

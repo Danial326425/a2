@@ -99,7 +99,7 @@ const CustomerRow = ({
                     <div
                       className="h-full bg-red-500"
                       style={{ width: `${failedPct}%` }}
-                      title={`Returned/Cancelled: ${failedPct}%`}
+                      title={`Returned: ${failedPct}%`}
                     />
                   )}
                   {pendingPct > 0 && (
@@ -112,12 +112,12 @@ const CustomerRow = ({
                 </div>
                 <div className="text-[10px] text-gray-600 mt-0.5 leading-tight">
                   <span className="font-semibold">{total}</span> Orders:
-                  {' '}<span className="text-green-600 font-semibold">{delivered} Delivered</span>
+                  {' '}<span className="text-green-600 font-semibold">{delivered} Delivered ({deliveredPct}%)</span>
                   {failed > 0 && (
-                    <>, <span className="text-red-600 font-semibold">{failed} Returned/Cancelled</span></>
+                    <>, <span className="text-red-600 font-semibold">{failed} Returned ({failedPct}%)</span></>
                   )}
                   {pending > 0 && (
-                    <>, <span className="text-gray-500 font-semibold">{pending} Pending</span></>
+                    <>, <span className="text-gray-500 font-semibold">{pending} Pending ({pendingPct}%)</span></>
                   )}
                 </div>
               </div>
