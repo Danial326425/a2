@@ -346,6 +346,11 @@ const ViewCustomer = () => {
           app.delivery_status &&
           app.delivery_status.toLowerCase() === 'partial delivered'
         );
+      case 'approval_pending':
+        return apps.filter(app =>
+          app.delivery_status &&
+          app.delivery_status.toLowerCase() === 'approval pending'
+        );
       case 'spam':
         return apps.filter(app => !!app.is_spam || isSteadfastSpam(app.phone_number));
       default:
