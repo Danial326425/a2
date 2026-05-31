@@ -26,3 +26,5 @@ export default function SeoSettingsShortcutPage() {
     </Suspense>
   );
 }
+
+// This page serves as a shortcut to redirect users to the SEO Settings tab in the dashboard. It uses the useEffect hook to perform the redirection when the component mounts, ensuring that users are taken directly to the relevant section of the dashboard without needing to navigate through multiple steps. The Suspense component provides a fallback loading indicator while the redirection is being processed.
