@@ -12,8 +12,9 @@ export default function BasicSeoTab({ settings, updateField, errors }) {
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_360px]">
       <div className="space-y-5">
         <FormGrid>
-          <SeoInput label="Website Title" value={settings.site_title} onChange={(v) => updateField("site_title", v)} maxLength={60} recommendedRange={[50, 60]} helpText="Used as the global site name." />
+          <SeoInput label="Website Title" value={settings.site_title} onChange={(v) => updateField("site_title", v)} maxLength={60} recommendedRange={[50, 60]} helpText="Used as the global site name (brand)." />
           <SeoInput label="Default Meta Title" value={settings.title} onChange={(v) => updateField("title", v)} maxLength={60} recommendedRange={[50, 60]} helpText="Appears as the main title in search results." />
+          <SeoInput label="Title Template" value={settings.title_template} onChange={(v) => updateField("title_template", v)} maxLength={80} helpText={`%s = পেজের নাম। যেমন: "%s | Online Shop" লিখলে দেখাবে "প্রোডাক্টের নাম | Online Shop"। শুধু "| Online Shop" লিখলেও কাজ করবে।`} />
         </FormGrid>
         <SeoTextarea label="Default Meta Description" value={settings.description} onChange={(v) => updateField("description", v)} maxLength={160} recommendedRange={[150, 160]} helpText="Appears under the title in search results." />
         <FormGrid>

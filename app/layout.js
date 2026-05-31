@@ -111,6 +111,17 @@ export async function generateMetadata() {
   //   og_*, twitter_*, facebook_app_id, *_verification → social/tracking
   const brand        = seo.site_title || config.siteName;
   const defaultTitle = seo.title || seo.site_title || brand;
+  // title_template lets admin fully control the title pattern.
+  // Uses %s as placeholder — e.g. "%s | My Shop", "%s – BD Store", or just "%s".
+  // Falls back to "Page | Brand" if not set.
+  const rawTemplate   = (seo.title_template || '').trim();
+  // Normalize: if admin typed "Online Shop" or "| Online Shop" (no %s),
+  // auto-build "%s | Online Shop" so the page title always comes first.
+  const titleTemplate = rawTemplate
+    ? (rawTemplate.includes('%s')
+        ? rawTemplate
+        : `%s | ${rawTemplate.replace(/^\s*[|–-]+\s*/, '')}`)
+    : `%s | ${brand}`;
 
   const base = buildSEO({
     title:       defaultTitle,
@@ -124,10 +135,10 @@ export async function generateMetadata() {
   return {
     ...base,
     // Override the title field with `default + template` so child pages
-    // produce "Page | Brand" automatically.
+    // produce the configured pattern automatically.
     title: {
       default: defaultTitle,
-      template: `%s | ${brand}`,
+      template: titleTemplate,
     },
     ...(seo.author_name ? { authors: [{ name: seo.author_name }] } : {}),
     ...(seo.theme_color ? { themeColor: seo.theme_color } : {}),

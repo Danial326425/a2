@@ -7,6 +7,7 @@ import { validateSeoSettings } from "@/app/lib/seo/validators";
 const DEFAULT_SETTINGS = {
   site_title: "",
   title: "",
+  title_template: "",
   description: "",
   keywords: "",
   canonical_url: "",

@@ -60,16 +60,14 @@ function resolveImage(image) {
 function buildTitle(title) {
   const brand = config.siteName;
   if (!title) return brand;
-  // Avoid "Brand | Brand" duplication if caller already included it.
-  if (title.toLowerCase().includes(brand.toLowerCase())) return clamp(title, 60);
-  return clamp(`${title} | ${brand}`, 60);
+  return clamp(title, 60);
 }
 
 /* ── main builder ──────────────────────────────────────────────────────── */
 
 /**
  * @param {object}  opts
- * @param {string}  [opts.title]
+ * @param {string}  [opts.title]             — page-level title; brand suffix comes from layout template
  * @param {string}  [opts.description]      — auto-clamped to 160 chars
  * @param {string}  [opts.image]            — full URL, relative path, or storage path
  * @param {string}  [opts.path]             — site-relative path, defaults to '/'
@@ -102,7 +100,9 @@ export function buildSEO(opts = {}) {
   /** @type {import('next').Metadata} */
   const metadata = {
     metadataBase: new URL(config.siteUrl),
-    title: finalTitle,
+    // `absolute` bypasses the root layout's title template — the template is
+    // only for pages that return a plain string title (not via buildSEO).
+    title: { absolute: finalTitle },
     description: finalDesc,
     alternates: { canonical },
     ...(keywords?.length ? { keywords } : {}),

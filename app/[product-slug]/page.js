@@ -46,32 +46,38 @@ export async function generateMetadata({ params }) {
   const product = await fetchProduct(slug);
 
   if (!product) {
-    return { title: 'Product not found', robots: { index: false, follow: false } };
+    return { title: 'পণ্য পাওয়া যায়নি', robots: { index: false, follow: false } };
   }
 
-  const headline = product?.homepage?.headline || product?.name;
+  const name     = product.name || '';
+  const price    = product.discount_price || product.price;
+  // SEO title: "Product Name – ৳Price | Brand" (brand appended by layout template)
+  // Keep under 60 chars — layout template adds " | Brand" on top.
+  const priceStr = price ? ` – ৳${Number(price).toLocaleString('bn-BD')}` : '';
+  const seoTitle = name + priceStr;
+
   const desc =
     product?.homepage?.paragraph ||
     stripHtml(product?.homepage?.description).slice(0, 160) ||
-    `Order ${product.name} - Cash on Delivery available across Bangladesh.`;
+    `${name}${price ? ` মাত্র ৳${price} টাকায়` : ''} অর্ডার করুন। ক্যাশ অন ডেলিভারি সুবিধায় সারা বাংলাদেশে ডেলিভারি।`;
 
   const primaryImage = buildImageUrl(pickPrimaryImage(product));
-  const canonical = `/${slug}`;
+  const canonical    = `/${slug}`;
 
   return {
-    title: headline,
+    title: seoTitle,
     description: desc,
     alternates: { canonical },
     openGraph: {
-      title: headline,
+      title: seoTitle,
       description: desc,
       type: 'website',
       url: canonical,
-      images: primaryImage ? [{ url: primaryImage, alt: product.name }] : [],
+      images: primaryImage ? [{ url: primaryImage, width: 1200, height: 630, alt: name }] : [],
     },
     twitter: {
       card: 'summary_large_image',
-      title: headline,
+      title: seoTitle,
       description: desc,
       images: primaryImage ? [primaryImage] : [],
     },
