@@ -255,26 +255,7 @@ const CustomerRow = ({
             <div className="mt-2 pt-2 border-t border-gray-100 text-xs">
               <div className="font-medium text-gray-600 mb-1 flex items-center gap-1">
                 <FaGift className="text-red-400" /> আপসেল:
-              </div>
-              <div className="flex items-center gap-2">
-                {app.upsell_product?.image ? (
-                  <img
-                    src={`/api/storage/${app.upsell_product.image}`}
-                    alt={app.upsell_product.name}
-                    className="w-8 h-8 rounded object-contain border bg-gray-50 flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-400 flex-shrink-0 text-base">
-                    🎁
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-gray-700 truncate">{app.upsell_product?.name || '—'}</div>
-                  {app.upsell_price && (
-                    <div className="text-red-600 font-semibold">৳{app.upsell_price}</div>
-                  )}
-                </div>
-                <span className={`flex-shrink-0 px-1.5 py-0.5 rounded-full font-semibold ${
+                <span className={`ml-1 px-1.5 py-0.5 rounded-full font-semibold ${
                   app.upsell_status === 'accepted'
                     ? 'bg-green-100 text-green-700'
                     : app.upsell_status === 'declined'
@@ -286,6 +267,46 @@ const CustomerRow = ({
                     : 'Pending'}
                 </span>
               </div>
+              {/* Show multiple accepted items if available */}
+              {app.upsell_status === 'accepted' && Array.isArray(app.upsell_items) && app.upsell_items.length > 0 ? (
+                <div className="space-y-1">
+                  {app.upsell_items.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-green-50 rounded-lg px-2 py-1">
+                      <span className="text-green-500 flex-shrink-0">✓</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-gray-700 font-medium truncate block">{item.name}</span>
+                        <div className="flex items-center gap-1 text-gray-500">
+                          {item.size && <span className="bg-gray-200 rounded px-1 text-xs">{item.size}</span>}
+                          <span className="text-red-600 font-bold">৳{item.price}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {app.upsell_price && (
+                    <div className="text-right text-red-600 font-bold pt-0.5">মোট: ৳{app.upsell_price}</div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {app.upsell_product?.image ? (
+                    <img
+                      src={`/api/storage/${app.upsell_product.image}`}
+                      alt={app.upsell_product.name}
+                      className="w-8 h-8 rounded object-contain border bg-gray-50 flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-400 flex-shrink-0 text-base">
+                      🎁
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-gray-700 truncate">{app.upsell_product?.name || '—'}</div>
+                    {app.upsell_price && (
+                      <div className="text-red-600 font-semibold">৳{app.upsell_price}</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </td>

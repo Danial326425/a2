@@ -45,6 +45,37 @@ body {
   position: relative;
 }
 
+/* Prose / rich-text rendered content — force wrap */
+.prose, .prose * {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.prose img, .prose table {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Quill editor — force text wrap so long words/HTML don't overflow */
+.ql-editor {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  overflow-x: hidden;
+  min-height: 120px;
+}
+
+.ql-container {
+  overflow: hidden;
+}
+
+/* Quill toolbar full-width so it doesn't overflow on small screens */
+.ql-toolbar {
+  flex-wrap: wrap !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 button:not(:disabled),
 [role="button"]:not(:disabled),
 a[href],

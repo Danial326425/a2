@@ -68,6 +68,7 @@ const ViewCoupon          = dynamic(() => import("./Coupon/ViewCoupon"), { ssr: 
 const CreateCartReward    = dynamic(() => import("./CartReward/CreateCartReward"), { ssr: false });
 const ViewCartReward      = dynamic(() => import("./CartReward/ViewCartReward"), { ssr: false });
 const SeoSettingsPage     = dynamic(() => import("./SeoSettings/SeoSettingsPage"), { ssr: false });
+const ViewReviews         = dynamic(() => import("./Reviews/ViewReviews"),         { ssr: false });
 
 
 const Dashboard = () => {
@@ -152,7 +153,8 @@ const Dashboard = () => {
         "seoSettings",
         "createUpsellProduct", "upsellProductOverview", "upsellSettings",
         "variationLibrary", "orderSettings",
-        "createCoupon", "couponOverview", "createCartReward", "cartRewardOverview"
+        "createCoupon", "couponOverview", "createCartReward", "cartRewardOverview",
+        "reviewsOverview"
       ],
       moderator: [
         // Moderator specific access
@@ -160,7 +162,7 @@ const Dashboard = () => {
         "createCategory", "createProduct", "contactUsOverview", "createSteadfast", "steadfastOverview",
         "leadOverview", "createCommunity", "communityOverview","createBanner", "bannerOverview",
         "createUpsellProduct", "upsellProductOverview", "upsellSettings",
-        "variationLibrary"
+        "variationLibrary", "reviewsOverview"
       ],
       user: ["dashboard"] // Basic user access
     };
@@ -310,6 +312,8 @@ const Dashboard = () => {
         return <ViewCustomer />;
       case "leadOverview":
         return <ViewLead />;
+      case "reviewsOverview":
+        return <ViewReviews />;
       case "transactionOverview":
         return <ViewTransaction />;
       case "usersOverview":
@@ -346,13 +350,13 @@ const Dashboard = () => {
           setIsCollapsed={setIsCollapsed}
         />
 
-        <main className={`flex-1 overflow-auto transition-all duration-300 ${
+        <main className={`flex-1 min-w-0 overflow-x-hidden overflow-y-auto transition-all duration-300 ${
           isCollapsed ? 'lg:ml-16' : 'lg:ml-64'
         } pt-16`}>
           <div className={selectedMenu === 'dashboard' ? '' : 'p-4 md:p-6 max-w-7xl mx-auto'}>
             {selectedMenu === 'dashboard'
               ? renderContent()
-              : <div className="bg-white rounded-xl shadow-sm p-4 md:p-6">{renderContent()}</div>
+              : <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 overflow-x-auto">{renderContent()}</div>
             }
           </div>
         </main>

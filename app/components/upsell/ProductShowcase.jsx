@@ -39,7 +39,7 @@ export default function ProductShowcase({ product, config, imageUrl }) {
         .upsell-product-img { height: ${heightDesktop}; }
       }
     `}</style>
-    <div className="upsell-product-section mx-4 mt-4 rounded-2xl overflow-hidden shadow-sm" style={{ backgroundColor: bgColor }}>
+    <div className="upsell-product-section mx-4 mt-6 rounded-2xl overflow-hidden shadow-sm" style={{ backgroundColor: bgColor }}>
       {/* Product badge / tag row */}
       <div className="flex items-center gap-2 px-4 pt-4 pb-2 flex-wrap">
         {p.show_badge !== false && product?.badge_text && (

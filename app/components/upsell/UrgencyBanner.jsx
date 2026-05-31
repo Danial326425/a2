@@ -10,13 +10,15 @@ export default function UrgencyBanner({ config }) {
   const fontSize  = u.font_size  ?? '14px';
 
   return (
-    <div
-      className="px-4 py-2 text-center font-bold"
-      style={{ backgroundColor: bgColor, color: textColor, fontSize }}
-    >
-      <span className="inline-flex items-center gap-1 animate-pulse">
-        {text}
-      </span>
+    <div className="px-4 pt-4 pb-1">
+      <div
+        className="px-4 py-2.5 rounded-xl text-center font-bold"
+        style={{ backgroundColor: bgColor, color: textColor, fontSize }}
+      >
+        <span className="inline-flex items-center gap-1 animate-pulse">
+          {text}
+        </span>
+      </div>
     </div>
   );
 }

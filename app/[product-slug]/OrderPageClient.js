@@ -249,6 +249,301 @@ const SimpleImageZoom = ({ src, alt, className, style, priority = false, sizes }
 
 
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const PER_PAGE = 5;
+
+function Stars({ rating, size = 18 }) {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {[1,2,3,4,5].map(i => (
+        <svg key={i} width={size} height={size} viewBox="0 0 20 20" fill={i <= rating ? '#FBBF24' : '#E5E7EB'}>
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+// Mask phone: 017****678
+function maskPhone(phone) {
+  if (!phone || phone.length < 6) return phone;
+  return phone.slice(0, 3) + '****' + phone.slice(-3);
+}
+
+// ── Star Picker ───────────────────────────────────────────────────────────────
+function StarPicker({ value, onChange }) {
+  const [hovered, setHovered] = useState(0);
+  const labels = ['', 'খুব খারাপ', 'খারাপ', 'মোটামুটি', 'ভালো', 'অসাধারণ'];
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1">
+        {[1,2,3,4,5].map(i => (
+          <button key={i} type="button"
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(0)}
+            onClick={() => onChange(i)}
+            className="focus:outline-none transition-transform hover:scale-110 select-none"
+          >
+            <svg width="32" height="32" viewBox="0 0 20 20"
+              fill={i <= (hovered || value) ? '#FBBF24' : '#E5E7EB'}>
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+            </svg>
+          </button>
+        ))}
+      </div>
+      {(hovered || value) > 0 && (
+        <span className="text-sm font-semibold text-yellow-600">
+          {labels[hovered || value]}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ── Reviews section ───────────────────────────────────────────────────────────
+function ReviewsSection({ productId, apiUrl }) {
+  const [reviews, setReviews]         = useState([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [form, setForm]               = useState({ reviewer_name: '', reviewer_phone: '', rating: 0, review: '' });
+  const [submitting, setSubmitting]   = useState(false);
+  const [submitted, setSubmitted]     = useState(false);
+  const [error, setError]             = useState(null);
+  const [showForm, setShowForm]       = useState(false);
+  const [page, setPage]               = useState(1);
+  const [filterStar, setFilterStar]   = useState(0); // 0 = all
+
+  useEffect(() => {
+    axios.get(`${apiUrl}/products/${productId}/reviews`)
+      .then(r => setReviews(r.data.reviews || []))
+      .catch(() => {})
+      .finally(() => setLoadingList(false));
+  }, [productId]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.reviewer_name.trim())  return setError('নাম লিখুন');
+    if (!form.reviewer_phone.trim()) return setError('মোবাইল নম্বর লিখুন');
+    if (!form.rating)                return setError('রেটিং দিন');
+    setError(null);
+    setSubmitting(true);
+    try {
+      await axios.post(`${apiUrl}/reviews`, { product_id: productId, ...form });
+      setSubmitted(true);
+      setShowForm(false);
+    } catch (err) {
+      setError(err.response?.data?.message || 'সমস্যা হয়েছে, আবার চেষ্টা করুন।');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Derived
+  const avg         = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
+  const starCount   = s => reviews.filter(r => r.rating === s).length;
+  const filtered    = filterStar ? reviews.filter(r => r.rating === filterStar) : reviews;
+  const totalPages  = Math.ceil(filtered.length / PER_PAGE);
+  const paginated   = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+
+  const handleFilter = (s) => { setFilterStar(s); setPage(1); };
+
+  const inp = "w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400";
+
+  return (
+    <div className="mt-10 max-w-2xl mx-auto px-4 pb-12">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-lg font-bold text-gray-900">Ratings &amp; Reviews</h2>
+        {!submitted && (
+          <button onClick={() => setShowForm(v => !v)}
+            className="text-sm font-semibold text-blue-600 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition">
+            {showForm ? '✕ বন্ধ' : '✏️ রিভিউ লিখুন'}
+          </button>
+        )}
+      </div>
+
+      {/* ── Rating summary ── */}
+      {!loadingList && reviews.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-5 flex gap-6 items-start">
+          {/* Big number */}
+          <div className="flex-shrink-0 text-center">
+            <div className="text-5xl font-black text-gray-900 leading-none">{avg.toFixed(1)}</div>
+            <div className="text-xs text-gray-500 mt-0.5">/5</div>
+            <Stars rating={Math.round(avg)} size={18} />
+            <div className="text-xs text-gray-500 mt-1">{reviews.length} Ratings</div>
+          </div>
+          {/* Bars */}
+          <div className="flex-1 space-y-1.5 min-w-0">
+            {[5,4,3,2,1].map(s => {
+              const n   = starCount(s);
+              const pct = reviews.length ? (n / reviews.length) * 100 : 0;
+              return (
+                <button key={s} type="button"
+                  onClick={() => handleFilter(filterStar === s ? 0 : s)}
+                  className="flex items-center gap-2 w-full group">
+                  <Stars rating={s} size={13} />
+                  <div className="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                    <div className="h-full bg-yellow-400 rounded-full transition-all"
+                      style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className={`text-xs w-6 text-right flex-shrink-0 font-medium ${filterStar === s ? 'text-yellow-600' : 'text-gray-500'}`}>{n}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Submit form ── */}
+      {showForm && !submitted && (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-5 shadow-sm">
+          <div className="bg-yellow-400 px-5 py-3">
+            <h3 className="font-bold text-gray-900 text-sm">আপনার অভিজ্ঞতা শেয়ার করুন</h3>
+            <p className="text-yellow-800 text-xs mt-0.5">অনুমোদনের পর প্রকাশিত হবে</p>
+          </div>
+          <div className="p-5">
+            {error && (
+              <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3 mb-3 flex items-center gap-2">
+                <span>⚠️</span>{error}
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">নাম *</label>
+                  <input value={form.reviewer_name}
+                    onChange={e => setForm(p => ({ ...p, reviewer_name: e.target.value }))}
+                    placeholder="আপনার নাম" className={inp} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">মোবাইল *</label>
+                  <input value={form.reviewer_phone} type="tel"
+                    onChange={e => setForm(p => ({ ...p, reviewer_phone: e.target.value }))}
+                    placeholder="017XXXXXXXX" className={inp} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">রেটিং *</label>
+                <StarPicker value={form.rating} onChange={v => setForm(p => ({ ...p, rating: v }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">মন্তব্য</label>
+                <textarea value={form.review} rows={3}
+                  onChange={e => setForm(p => ({ ...p, review: e.target.value }))}
+                  placeholder="আপনার অভিজ্ঞতা লিখুন…"
+                  className={inp + " resize-none"} />
+              </div>
+              <button type="submit" disabled={submitting}
+                className="w-full py-3 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold rounded-lg transition disabled:opacity-60 text-sm">
+                {submitting ? 'পাঠানো হচ্ছে…' : 'সাবমিট করুন'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Success ── */}
+      {submitted && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center mb-5">
+          <p className="font-bold text-green-800">🎉 ধন্যবাদ! আপনার রিভিউ জমা হয়েছে।</p>
+          <p className="text-xs text-green-600 mt-0.5">অনুমোদনের পর প্রকাশিত হবে।</p>
+        </div>
+      )}
+
+      {/* ── Review list header ── */}
+      {!loadingList && (
+        <div className="flex items-center justify-between py-3 border-b border-gray-200 mb-3">
+          <span className="font-semibold text-gray-800 text-sm">Product Reviews</span>
+          {filterStar > 0 && (
+            <button onClick={() => handleFilter(0)}
+              className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+              <Stars rating={filterStar} size={12} /> ফিল্টার বাদ দিন ✕
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── List ── */}
+      {loadingList ? (
+        <div className="space-y-3">
+          {[1,2,3].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-gray-100 p-4 animate-pulse">
+              <div className="flex gap-3 mb-2">
+                <div className="h-3 bg-gray-200 rounded w-20" />
+                <div className="h-3 bg-gray-100 rounded w-16 ml-auto" />
+              </div>
+              <div className="h-3 bg-gray-100 rounded w-3/4 mb-1" />
+              <div className="h-3 bg-gray-100 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+          <p className="text-gray-500 text-sm">{filterStar ? `${filterStar}★ রিভিউ নেই` : 'এখনো কোনো রিভিউ নেই। প্রথম রিভিউ দিন!'}</p>
+        </div>
+      ) : (
+        <>
+          <div className="divide-y divide-gray-100">
+            {paginated.map(r => (
+              <div key={r.id} className="py-4">
+                {/* Stars + date row */}
+                <div className="flex items-center justify-between mb-1">
+                  <Stars rating={r.rating} size={16} />
+                  <span className="text-xs text-gray-400">
+                    {new Date(r.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}
+                  </span>
+                </div>
+                {/* Name + verified */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-semibold text-gray-800">
+                    {maskPhone(r.reviewer_name)}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                    </svg>
+                    Verified Purchase
+                  </span>
+                </div>
+                {/* Review text */}
+                {r.review && (
+                  <p className="text-sm text-gray-700 leading-relaxed">{r.review}</p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* ── Pagination ── */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-6">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                ← আগে
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button key={p} onClick={() => setPage(p)}
+                  className={`w-8 h-8 text-sm rounded-lg font-semibold transition ${
+                    page === p ? 'bg-yellow-400 text-gray-900' : 'border border-gray-300 text-gray-600 hover:bg-gray-50'
+                  }`}>
+                  {p}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                পরে →
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 const OrderPageClient = ({ slug, initialProduct }) => {
   const router = useRouter();
 
@@ -300,6 +595,7 @@ const OrderPageClient = ({ slug, initialProduct }) => {
   console.log('[OrderPage] products.images:', products?.images);
 
   const [dataSaved, setDataSaved] = useState(false);
+  const [showSizeGuide, setShowSizeGuide] = useState(false);
 
   const [token, setToken] = useState(null);
 
@@ -1182,6 +1478,37 @@ const handleAddToCart = (product) => {
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
+      {/* ── Size Guide Modal ──────────────────────────────────────────────── */}
+      {showSizeGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowSizeGuide(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">📐 Size Guide</h3>
+              <button onClick={() => setShowSizeGuide(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-xl transition">
+                ×
+              </button>
+            </div>
+            <div className="p-5">
+              {products?.size_guide_text && (
+                <pre className="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 rounded-xl p-4 border border-gray-100 font-sans leading-relaxed mb-4">
+                  {products.size_guide_text}
+                </pre>
+              )}
+              {products?.size_guide_image && (
+                <img
+                  src={`${imageUrl}/${products.size_guide_image}`}
+                  alt="Size Guide"
+                  className="w-full rounded-xl border border-gray-100"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="flex-grow container mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Product Header */}
         {homepage?.headline && (
@@ -1291,8 +1618,9 @@ const handleAddToCart = (product) => {
                     {products.name} সম্পর্কে
                   </h2>
                   <div 
-                    className="prose max-w-none text-gray-700"
-                    dangerouslySetInnerHTML={{ __html: homepage.description }} 
+                    className="prose max-w-none text-gray-700 break-words overflow-hidden"
+                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                    dangerouslySetInnerHTML={{ __html: homepage.description }}
                   />
                 </div>
               </div>
@@ -1328,6 +1656,40 @@ const handleAddToCart = (product) => {
                 )}
               </div>
 
+              {/* ── Rating ─────────────────────────────────────────── */}
+              {products?.rating_enabled && products?.rating > 0 && (
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="flex items-center gap-0.5">
+                    {[1,2,3,4,5].map(i => {
+                      const filled = i <= Math.floor(products.rating);
+                      const half   = !filled && i - 0.5 <= products.rating;
+                      return (
+                        <span key={i} className="text-xl leading-none" style={{ color: filled || half ? '#FBBF24' : '#D1D5DB' }}>
+                          {filled ? '★' : half ? '⯨' : '☆'}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <span className="text-sm font-bold text-yellow-600">{Number(products.rating).toFixed(1)}</span>
+                  {products.rating_count > 0 && (
+                    <span className="text-sm text-gray-400">({products.rating_count.toLocaleString()} রিভিউ)</span>
+                  )}
+                </div>
+              )}
+
+              {/* ── Guarantee Badge ─────────────────────────────────── */}
+              {products?.guarantee_badge?.enabled && products.guarantee_badge.text && (
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold mb-4 border"
+                  style={{
+                    backgroundColor: products.guarantee_badge.bg_color || '#f0fdf4',
+                    color:           products.guarantee_badge.text_color || '#166534',
+                    borderColor:     products.guarantee_badge.bg_color || '#bbf7d0',
+                  }}>
+                  <span className="text-base">{products.guarantee_badge.icon || '🛡️'}</span>
+                  {products.guarantee_badge.text}
+                </div>
+              )}
+
               {/* Mobile Description - Expandable */}
               {homepage?.description && (
                 <div className="lg:hidden mb-6 bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
@@ -1356,7 +1718,8 @@ const handleAddToCart = (product) => {
                   {showDescription && (
                     <div className="px-4 py-4 bg-white border-t border-gray-100 animate-fadeIn">
                       <div 
-                        className="prose prose-sm max-w-none text-gray-700"
+                        className="prose prose-sm max-w-none text-gray-700 break-words overflow-hidden"
+                        style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                         dangerouslySetInnerHTML={{ __html: homepage.description }} 
                       />
                       <div className="mt-4 pt-4 border-t border-gray-100 flex justify-center">
@@ -1379,9 +1742,17 @@ const handleAddToCart = (product) => {
                 {/* Size Selection */}
                 {products?.colors?.length > 0 && products.colors.some(color => color.sizes && color.sizes.length > 0) && (
                   <div ref={sizeRef} className={`mb-6 p-3 rounded-xl transition-all duration-300 ${sizeError ? 'border-2 border-red-400 bg-red-50' : 'border border-transparent'}`}>
-                    <label className="block text-lg font-semibold mb-3 text-gray-700">
-                      সাইজ সিলেক্ট করুন:
-                    </label>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-lg font-semibold text-gray-700">
+                        সাইজ সিলেক্ট করুন:
+                      </label>
+                      {products.size_guide_enabled && (products.size_guide_text || products.size_guide_image) && (
+                        <button type="button" onClick={() => setShowSizeGuide(true)}
+                          className="text-xs font-semibold text-blue-600 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                          📐 Size Guide
+                        </button>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {products.colors
                         .filter((colorOption) => colorOption.id === selectedColorId)
@@ -1415,9 +1786,17 @@ const handleAddToCart = (product) => {
                 {/* Size Selection for Single Product Sizes */}
                 {products?.single_product_sizes?.length > 0 && (
                   <div ref={sizeRef} className={`mb-6 p-3 rounded-xl transition-all duration-300 ${sizeError ? 'border-2 border-red-400 bg-red-50' : 'border border-transparent'}`}>
-                    <label className="block text-lg font-semibold mb-3 text-gray-700">
-                      সাইজ সিলেক্ট করুন:
-                    </label>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-lg font-semibold text-gray-700">
+                        সাইজ সিলেক্ট করুন:
+                      </label>
+                      {products.size_guide_enabled && (products.size_guide_text || products.size_guide_image) && (
+                        <button type="button" onClick={() => setShowSizeGuide(true)}
+                          className="text-xs font-semibold text-blue-600 border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                          📐 Size Guide
+                        </button>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {products.single_product_sizes.map((sizeOption) => (
                         <button
@@ -1959,6 +2338,9 @@ const handleAddToCart = (product) => {
           removeFromCart={removeItem}
           updateQuantity={updateItemQuantity}
         />
+
+        {/* ── Reviews Section ──────────────────────────────────────────────── */}
+        {products?.id && products?.reviews_enabled && <ReviewsSection productId={products.id} apiUrl={apiUrl} />}
 
         <Suspense fallback={<div>Loading related products...</div>}>
           <RelatedProducts

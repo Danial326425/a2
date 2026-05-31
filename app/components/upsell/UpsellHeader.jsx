@@ -8,8 +8,8 @@ export default function UpsellHeader({ config }) {
 
   return (
     <div
-      className="px-5 py-6 text-center"
-      style={{ backgroundColor: bgColor, color: textColor }}
+      className="px-5 pt-6 pb-8 text-center"
+      style={{ backgroundColor: bgColor, color: textColor, borderRadius: '0 0 24px 24px' }}
     >
       {h.badge_text && (
         <span

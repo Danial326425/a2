@@ -28,7 +28,15 @@ const CreateProduct = ({ onProductCreated }) => {
     homepage: { headline: "", paragraph: "", description: "" },
     singleProductSizes: [{ size: "" }],
     has_upsell: false,
-    upsell_product_id: "",
+    upsell_product_ids: [],
+    rating: "",
+    rating_count: "",
+    rating_enabled: false,
+    size_guide_text: "",
+    size_guide_image_file: null,
+    size_guide_enabled: false,
+    guarantee_badge: { enabled: false, icon: "🛡️", text: "", bg_color: "#f0fdf4", text_color: "#166534" },
+    reviews_enabled: false,
   });
 
   const [categories, setCategories]             = useState([]);
@@ -254,10 +262,20 @@ const CreateProduct = ({ onProductCreated }) => {
     data.append("free_delivery_enabled", formData.free_delivery_enabled ? "1" : "0");
     data.append("free_delivery_min_qty", formData.free_delivery_min_qty || "");
     formData.category_id.forEach((id, i) => data.append(`categories[${i}]`, id));
-    data.append("has_upsell", showUpsell && formData.upsell_product_id ? "1" : "0");
-    if (showUpsell && formData.upsell_product_id) {
-      data.append("upsell_product_id", formData.upsell_product_id);
+    const activeUpsellIds = showUpsell ? formData.upsell_product_ids : [];
+    data.append("has_upsell", activeUpsellIds.length > 0 ? "1" : "0");
+    if (activeUpsellIds.length > 0) {
+      data.append("upsell_product_ids", JSON.stringify(activeUpsellIds));
     }
+
+    if (formData.rating)        data.append("rating",        formData.rating);
+    if (formData.rating_count)  data.append("rating_count",  formData.rating_count);
+    data.append("rating_enabled",     formData.rating_enabled     ? "1" : "0");
+    if (formData.size_guide_text) data.append("size_guide_text", formData.size_guide_text);
+    data.append("size_guide_enabled", formData.size_guide_enabled ? "1" : "0");
+    if (formData.size_guide_image_file instanceof File) data.append("size_guide_image", formData.size_guide_image_file);
+    if (formData.guarantee_badge) data.append("guarantee_badge", JSON.stringify(formData.guarantee_badge));
+    data.append("reviews_enabled", formData.reviews_enabled ? "1" : "0");
 
     if (showHomepage) {
       data.append("homepage[headline]", formData.homepage.headline);
@@ -729,24 +747,50 @@ const CreateProduct = ({ onProductCreated }) => {
         {showUpsell && (
           <SectionCard>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Upsell Offer (Post-Order)</p>
-            <p className="text-xs text-gray-500 mb-3">অর্ডার সম্পন্ন হলে কাস্টমারকে এই আপসেল পেজে নিয়ে যাওয়া হবে।</p>
-            <FormField label="Upsell Product" required>
-              <Select
-                value={formData.upsell_product_id}
-                onChange={e => setFormData(p => ({ ...p, upsell_product_id: e.target.value }))}
-              >
-                <option value="">-- আপসেল পণ্য বেছে নিন --</option>
-                {upsellProducts.filter(u => u.is_active).map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} (৳{Number(u.offer_price).toLocaleString()})
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-            {upsellProducts.length === 0 && (
-              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3">
+            <p className="text-xs text-gray-500 mb-3">অর্ডার সম্পন্ন হলে কাস্টমারকে এই আপসেল পেজে নিয়ে যাওয়া হবে। একাধিক পণ্য বেছে নিলে কাস্টমার সবগুলো থেকে বেছে নিতে পারবেন।</p>
+            {upsellProducts.length === 0 ? (
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
                 কোনো সক্রিয় আপসেল পণ্য নেই। Dashboard → Upsell থেকে আগে পণ্য তৈরি করুন।
               </p>
+            ) : (
+              <div className="space-y-2">
+                {upsellProducts.filter(u => u.is_active).map(u => {
+                  const checked = formData.upsell_product_ids.includes(u.id);
+                  return (
+                    <label key={u.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${checked ? "border-red-400 bg-red-50" : "border-gray-200 hover:border-gray-300"}`}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          setFormData(p => ({
+                            ...p,
+                            upsell_product_ids: checked
+                              ? p.upsell_product_ids.filter(id => id !== u.id)
+                              : [...p.upsell_product_ids, u.id],
+                          }));
+                        }}
+                        className="w-4 h-4 rounded accent-red-500 flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-gray-800">{u.name}</div>
+                        <div className="text-xs text-gray-500">
+                          <span className="line-through">৳{Number(u.original_price).toLocaleString()}</span>
+                          {" → "}
+                          <span className="text-red-600 font-bold">৳{Number(u.offer_price).toLocaleString()}</span>
+                          {Array.isArray(u.sizes) && u.sizes.length > 0 && (
+                            <span className="ml-2 text-blue-600">সাইজ: {u.sizes.join(", ")}</span>
+                          )}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+                {formData.upsell_product_ids.length > 0 && (
+                  <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg p-2 mt-1">
+                    {formData.upsell_product_ids.length}টি আপসেল পণ্য নির্বাচিত
+                  </p>
+                )}
+              </div>
             )}
           </SectionCard>
         )}
@@ -778,6 +822,145 @@ const CreateProduct = ({ onProductCreated }) => {
             </div>
           </SectionCard>
         )}
+
+        {/* ── Rating ───────────────────────────────────────────── */}
+        <SectionCard>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">⭐ Product Rating</p>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox"
+                checked={!!(formData.rating_enabled)}
+                onChange={e => setFormData(p => ({ ...p, rating_enabled: e.target.checked }))}
+                className="w-4 h-4 accent-yellow-500" />
+              <span className="text-sm font-medium text-gray-700">{formData.rating_enabled ? "Active" : "Inactive"}</span>
+            </label>
+          </div>
+          {formData.rating_enabled && <FormGrid cols={2}>
+            <FormField label="Rating (0–5)">
+              <Input type="number" min="0" max="5" step="0.1"
+                value={formData.rating}
+                onChange={e => setFormData(p => ({ ...p, rating: e.target.value }))}
+                placeholder="4.5" />
+              {formData.rating > 0 && (
+                <div className="flex items-center gap-0.5 mt-1.5">
+                  {[1,2,3,4,5].map(i => (
+                    <span key={i} className={`text-lg ${i <= Math.round(formData.rating) ? "text-yellow-400" : "text-gray-200"}`}>★</span>
+                  ))}
+                  <span className="text-xs text-gray-500 ml-1">{Number(formData.rating).toFixed(1)}</span>
+                </div>
+              )}
+            </FormField>
+            <FormField label="Review Count">
+              <Input type="number" min="0"
+                value={formData.rating_count}
+                onChange={e => setFormData(p => ({ ...p, rating_count: e.target.value }))}
+                placeholder="128" />
+            </FormField>
+          </FormGrid>}
+        </SectionCard>
+
+        {/* ── Size Guide ────────────────────────────────────────── */}
+        <SectionCard>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">📐 Size Guide</p>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox"
+                checked={!!(formData.size_guide_enabled)}
+                onChange={e => setFormData(p => ({ ...p, size_guide_enabled: e.target.checked }))}
+                className="w-4 h-4 accent-blue-500" />
+              <span className="text-sm font-medium text-gray-700">{formData.size_guide_enabled ? "Active" : "Inactive"}</span>
+            </label>
+          </div>
+          <p className="text-xs text-gray-500 mb-3">টেক্সট বা ইমেজ যোগ করুন — Active করলে অর্ডার পেজে &quot;Size Guide&quot; বাটন দেখাবে।</p>
+          <div className="space-y-4">
+            <FormField label="Size Guide Text">
+              <Textarea rows={4}
+                value={formData.size_guide_text}
+                onChange={e => setFormData(p => ({ ...p, size_guide_text: e.target.value }))}
+                placeholder={"S = ৩৬\nM = ৩৮\nL = ৪০\nXL = ৪২"} />
+            </FormField>
+            <FormField label="Size Guide Image (ঐচ্ছিক)">
+              <FileUpload accept="image/*"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) setFormData(p => ({ ...p, size_guide_image_file: file }));
+                }} />
+            </FormField>
+          </div>
+        </SectionCard>
+
+        {/* ── Guarantee Badge ───────────────────────────────────── */}
+        <SectionCard>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">🛡️ Guarantee Badge</p>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox"
+                checked={!!(formData.guarantee_badge?.enabled)}
+                onChange={e => setFormData(p => ({
+                  ...p,
+                  guarantee_badge: { ...(p.guarantee_badge || { icon: "🛡️", bg_color: "#f0fdf4", text_color: "#166534", text: "" }), enabled: e.target.checked }
+                }))}
+                className="w-4 h-4 accent-green-600" />
+              <span className="text-sm font-medium text-gray-700">সক্রিয়</span>
+            </label>
+          </div>
+          {formData.guarantee_badge?.enabled && (
+            <div className="space-y-3">
+              <FormGrid cols={2}>
+                <FormField label="Icon (emoji)">
+                  <Input value={formData.guarantee_badge?.icon ?? "🛡️"}
+                    onChange={e => setFormData(p => ({ ...p, guarantee_badge: { ...p.guarantee_badge, icon: e.target.value } }))}
+                    placeholder="🛡️" />
+                </FormField>
+                <FormField label="Badge Text">
+                  <Input value={formData.guarantee_badge?.text ?? ""}
+                    onChange={e => setFormData(p => ({ ...p, guarantee_badge: { ...p.guarantee_badge, text: e.target.value } }))}
+                    placeholder="১০০% অরিজিনাল গ্যারান্টি" />
+                </FormField>
+                <FormField label="Background Color">
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={formData.guarantee_badge?.bg_color ?? "#f0fdf4"}
+                      onChange={e => setFormData(p => ({ ...p, guarantee_badge: { ...p.guarantee_badge, bg_color: e.target.value } }))}
+                      className="w-10 h-9 rounded border cursor-pointer" />
+                    <span className="text-xs text-gray-500">{formData.guarantee_badge?.bg_color}</span>
+                  </div>
+                </FormField>
+                <FormField label="Text Color">
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={formData.guarantee_badge?.text_color ?? "#166534"}
+                      onChange={e => setFormData(p => ({ ...p, guarantee_badge: { ...p.guarantee_badge, text_color: e.target.value } }))}
+                      className="w-10 h-9 rounded border cursor-pointer" />
+                    <span className="text-xs text-gray-500">{formData.guarantee_badge?.text_color}</span>
+                  </div>
+                </FormField>
+              </FormGrid>
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Preview:</p>
+                <span className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold"
+                  style={{ backgroundColor: formData.guarantee_badge?.bg_color ?? "#f0fdf4", color: formData.guarantee_badge?.text_color ?? "#166534" }}>
+                  {formData.guarantee_badge?.icon ?? "🛡️"} {formData.guarantee_badge?.text || "Badge Text"}
+                </span>
+              </div>
+            </div>
+          )}
+        </SectionCard>
+
+        {/* ── Reviews ──────────────────────────────────────────── */}
+        <SectionCard>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">💬 Customer Reviews</p>
+              <p className="text-xs text-gray-500 mt-1">Active করলে অর্ডার পেজে রিভিউ ফর্ম ও রিভিউ দেখাবে।</p>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox"
+                checked={!!(formData.reviews_enabled)}
+                onChange={e => setFormData(p => ({ ...p, reviews_enabled: e.target.checked }))}
+                className="w-4 h-4 accent-purple-600" />
+              <span className="text-sm font-medium text-gray-700">{formData.reviews_enabled ? "Active" : "Inactive"}</span>
+            </label>
+          </div>
+        </SectionCard>
 
         {/* ── Submit ───────────────────────────────────────────── */}
         <ProductSeoSection

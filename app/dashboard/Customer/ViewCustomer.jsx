@@ -150,8 +150,9 @@ const ViewCustomer = () => {
       });
 
       if (response.data.customers && response.data.customers.length > 0) {
-        setApplications(response.data.customers);
-        setFilteredApplications(response.data.customers);
+        const sorted = response.data.customers.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        setApplications(sorted);
+        setFilteredApplications(sorted);
         setTotalPages(Math.ceil(response.data.customers.length / itemsPerPage));
         setCurrentPage(1);
       } else {
@@ -425,44 +426,37 @@ const ViewCustomer = () => {
       alert("Please select a status first");
       return;
     }
-
     if (selectedApplications.length === 0) {
       alert("Please select at least one order to update status");
       return;
     }
 
     try {
-      // Update each selected order
-      await Promise.all(
-        selectedApplications.map(async (id) => {
-          const order = applications.find(app => app.id === id);
-          if (order) {
-            await axios.put(`${apiUrl}/customersupdate/${id}`, {
-              ...order,
-              delivery_status: bulkStatus
-            });
-          }
-        })
-      );
-
-      // Update local state
-      const updatedApplications = applications.map(app => {
-        if (selectedApplications.includes(app.id)) {
-          return {
-            ...app,
-            delivery_status: bulkStatus
-          };
-        }
-        return app;
+      // Single request — backend processes sequentially so every CAPI
+      // Purchase event fires without concurrent HTTP contention.
+      const res = await axios.post(`${apiUrl}/customers/bulk-status`, {
+        ids:    selectedApplications,
+        status: bulkStatus,
       });
 
-      setApplications(updatedApplications);
+      // Update local state
+      setApplications(prev =>
+        prev.map(app =>
+          selectedApplications.includes(app.id)
+            ? { ...app, delivery_status: bulkStatus }
+            : app
+        )
+      );
 
-      // Clear selection and bulk status
       setSelectedApplications([]);
       setBulkStatus('');
 
-      alert(`Successfully updated ${selectedApplications.length} orders to ${bulkStatus}`);
+      const { updated, errors } = res.data;
+      if (errors?.length) {
+        alert(`${updated} orders updated. ${errors.length} failed:\n${errors.join('\n')}`);
+      } else {
+        alert(`Successfully updated ${updated} orders to ${bulkStatus}`);
+      }
 
     } catch (err) {
       console.error("Error updating bulk status:", err);

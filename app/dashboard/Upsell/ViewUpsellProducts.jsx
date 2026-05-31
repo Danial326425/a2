@@ -23,6 +23,7 @@ function EditModal({ product, onClose, onSaved }) {
     label:          product.label  || "",
   });
   const [features, setFeatures] = useState(Array.isArray(product.features) && product.features.length ? product.features : [""]);
+  const [sizes, setSizes]       = useState(Array.isArray(product.sizes) && product.sizes.length ? product.sizes : [""]);
   const [image, setImage]      = useState(null);
   const [preview, setPreview]  = useState(null);
   const [saving, setSaving]    = useState(false);
@@ -50,6 +51,10 @@ function EditModal({ product, onClose, onSaved }) {
   const addFeature    = () => setFeatures(f => [...f, ""]);
   const removeFeature = (i) => setFeatures(f => f.filter((_, idx) => idx !== i));
 
+  const updateSize = (i, val) => { const arr = [...sizes]; arr[i] = val; setSizes(arr); };
+  const addSize    = () => setSizes(s => [...s, ""]);
+  const removeSize = (i) => setSizes(s => s.filter((_, idx) => idx !== i));
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -67,6 +72,8 @@ function EditModal({ product, onClose, onSaved }) {
     fd.append("label",          form.label);
     const cleanFeatures = features.filter(f => f.trim());
     if (cleanFeatures.length) fd.append("features", JSON.stringify(cleanFeatures));
+    const cleanSizes = sizes.filter(s => s.trim());
+    if (cleanSizes.length) fd.append("sizes", JSON.stringify(cleanSizes));
     if (image) fd.append("image", image, "upsell.webp");
 
     try {
@@ -146,6 +153,23 @@ function EditModal({ product, onClose, onSaved }) {
                 </div>
               ))}
               <button type="button" onClick={addFeature} className="text-xs text-red-500 font-semibold hover:underline">+ যোগ করুন</button>
+            </div>
+          </div>
+
+          {/* Sizes */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">সাইজ অপশন (ঐচ্ছিক)</label>
+            <div className="space-y-2">
+              {sizes.map((s, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input value={s} onChange={e => updateSize(i, e.target.value)} className={inputCls} placeholder="যেমন: S, M, L, XL" />
+                  <button type="button" onClick={() => removeSize(i)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-200 text-red-400 hover:bg-red-50 text-lg flex-shrink-0">
+                    &times;
+                  </button>
+                </div>
+              ))}
+              <button type="button" onClick={addSize} className="text-xs text-red-500 font-semibold hover:underline">+ সাইজ যোগ করুন</button>
             </div>
           </div>
 

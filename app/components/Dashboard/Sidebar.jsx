@@ -34,6 +34,7 @@ import {
   Tag,
   Ticket,
   FileText,
+  Star,
   PanelLeftClose,
   PanelLeft,
   X,
@@ -131,6 +132,12 @@ const MENU_GROUPS = [
         icon: Clock,
         key: "leads",
         directItem: "leadOverview",
+      },
+      {
+        title: "Reviews",
+        icon: Star,
+        key: "reviews",
+        directItem: "reviewsOverview",
       },
     ],
   },
@@ -368,6 +375,7 @@ const ROLE_ACCESS = {
     },
     customers: ["customerOverview"],
     leads: ["leadOverview"],
+    reviews: ["reviewsOverview"],
     siteManagement: {
       menu: ["createMenu", "menuOverview"],
       logo: ["createLogo", "logoOverview"],
@@ -406,6 +414,7 @@ const ROLE_ACCESS = {
     },
     customers: ["customerOverview"],
     leads: ["leadOverview"],
+    reviews: ["reviewsOverview"],
     siteManagement: {
       banner: ["createBanner", "bannerOverview"],
       community: ["createCommunity", "communityOverview"],

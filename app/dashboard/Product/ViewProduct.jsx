@@ -47,7 +47,7 @@ const ViewProduct = () => {
     bumps: [{ title: "", bump_price: "", image: null, description: "" }],
     homepage: { headline: "", paragraph: "", description: "" },
     singleProductSizes: [{ size: "" }],
-    has_upsell: false, upsell_product_id: "",
+    has_upsell: false, upsell_product_ids: [],
   });
   const [showHomepageFields, setShowHomepageFields]       = useState(false);
   const [showBulkDiscounts, setShowBulkDiscounts]         = useState(false);
@@ -125,7 +125,19 @@ const ViewProduct = () => {
       singleProductSizes: product.single_product_sizes?.map(s => ({ id: s.id, size: s.size || "" })) || [],
       homepage: product.homepage || { headline: "", paragraph: "", description: "" },
       has_upsell: !!product.has_upsell,
-      upsell_product_id: product.upsell_product_id ? String(product.upsell_product_id) : "",
+      upsell_product_ids: Array.isArray(product.upsells) && product.upsells.length > 0
+        ? product.upsells.map(u => u.id)
+        : (product.upsell_product_id ? [Number(product.upsell_product_id)] : []),
+      rating:           product.rating ?? 0,
+      rating_count:     product.rating_count ?? 0,
+      rating_enabled:   !!product.rating_enabled,
+      size_guide_text:  product.size_guide_text ?? "",
+      size_guide_image:   product.size_guide_image ?? null,
+      size_guide_enabled: !!product.size_guide_enabled,
+      size_guide_image_file: null,
+      remove_size_guide_image: "",
+      guarantee_badge:  product.guarantee_badge ?? { enabled: false, icon: "🛡️", text: "", bg_color: "#f0fdf4", text_color: "#166534" },
+      reviews_enabled:  !!product.reviews_enabled,
       seo: {
         ...emptySeo,
         ...(product.seo || {}),
@@ -207,10 +219,34 @@ const ViewProduct = () => {
       formData.category_id.forEach((id, i) => data.append(`categories[${i}]`, id));
       data.append("slug", formData.slug);
       data.append("clothing", formData.clothing ? "1" : "0");
-      data.append("has_upsell", showUpsell && formData.upsell_product_id ? "1" : "0");
-      if (showUpsell && formData.upsell_product_id) {
-        data.append("upsell_product_id", formData.upsell_product_id);
+      const activeUpsellIds = showUpsell ? formData.upsell_product_ids : [];
+      data.append("has_upsell", activeUpsellIds.length > 0 ? "1" : "0");
+      if (activeUpsellIds.length > 0) {
+        data.append("upsell_product_ids", JSON.stringify(activeUpsellIds));
       }
+
+      // Rating
+      data.append("rating",         formData.rating ?? 0);
+      data.append("rating_count",   formData.rating_count ?? 0);
+      data.append("rating_enabled", formData.rating_enabled ? "1" : "0");
+
+      // Size Guide
+      if (formData.size_guide_text !== undefined) {
+        data.append("size_guide_text", formData.size_guide_text ?? "");
+      }
+      if (formData.size_guide_image_file instanceof File) {
+        data.append("size_guide_image", formData.size_guide_image_file);
+      }
+      if (formData.remove_size_guide_image === "1") {
+        data.append("remove_size_guide_image", "1");
+      }
+      data.append("size_guide_enabled", formData.size_guide_enabled ? "1" : "0");
+
+      // Guarantee Badge
+      if (formData.guarantee_badge) {
+        data.append("guarantee_badge", JSON.stringify(formData.guarantee_badge));
+      }
+      data.append("reviews_enabled", formData.reviews_enabled ? "1" : "0");
 
       if (showHomepageFields) {
         data.append("homepage[headline]", formData.homepage.headline || "");
