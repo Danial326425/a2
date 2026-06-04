@@ -22,7 +22,7 @@ function getOrCreateEndTime(totalSeconds) {
   return end;
 }
 
-export default function CountdownTimer({ config }) {
+export default function CountdownTimer({ config, onExpire }) {
   const t = config?.timer ?? {};
   if (t.enabled === false) return null;
 
@@ -40,8 +40,11 @@ export default function CountdownTimer({ config }) {
   const borderColor  = t.border_color || accentColor;
   const borderWidth  = t.border_width || '1px';
 
-  const endTimeRef  = useRef(null);
-  const intervalRef = useRef(null);
+  const endTimeRef   = useRef(null);
+  const intervalRef  = useRef(null);
+  const expiredRef   = useRef(false);
+  const onExpireRef  = useRef(onExpire);
+  onExpireRef.current = onExpire;
 
   const calcRemaining = () => {
     if (!endTimeRef.current) return totalSeconds;
@@ -53,12 +56,19 @@ export default function CountdownTimer({ config }) {
   useEffect(() => {
     // Runs only on client after mount
     endTimeRef.current = getOrCreateEndTime(totalSeconds);
+    expiredRef.current = false;
     setSecondsLeft(calcRemaining());
 
     intervalRef.current = setInterval(() => {
       const remaining = calcRemaining();
       setSecondsLeft(remaining);
-      if (remaining === 0) clearInterval(intervalRef.current);
+      if (remaining === 0) {
+        clearInterval(intervalRef.current);
+        if (!expiredRef.current) {
+          expiredRef.current = true;
+          onExpireRef.current?.();
+        }
+      }
     }, 1000);
 
     return () => clearInterval(intervalRef.current);

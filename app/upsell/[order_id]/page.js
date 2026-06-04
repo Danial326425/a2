@@ -519,6 +519,7 @@ export default function UpsellPage() {
     imageUrl: config.imageUrl,
     onAccept: handleAccept,
     onDecline: handleDecline,
+    onExpire: actionLoading ? undefined : handleDecline,
     loading: actionLoading,
     disabled: !canAccept,
   };
