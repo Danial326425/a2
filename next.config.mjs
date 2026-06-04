@@ -1,6 +1,13 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
+  turbopack: {
+    root: __dirname,
+  },
   images: {
     // Next.js 16 blocks local-IP image optimization by default. We host the
     // Laravel API on localhost:8000 in dev, so allow it here. In production

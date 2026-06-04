@@ -7,6 +7,7 @@ import { ProductContext } from "../../context/ProductsContext";
 import bdLocations from "../../data/locations";
 import { useParams, useRouter } from "next/navigation";
 import { trackBrowserEvent, sendCAPIEvent, generateEventId } from "@/pixel";
+import { ownTrack } from "@/app/lib/tracking";
 import DeliveryCharge from "./DeliveryCharge";
 import CouponBox from "../CouponBox";
 import {
@@ -401,6 +402,7 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
         if (entry.isIntersecting && !checkoutViewFired.current) {
           checkoutViewFired.current = true;
           observer.disconnect();
+          ownTrack('checkout_view', slug);
         }
       },
       { threshold: 0.15 }

@@ -353,7 +353,7 @@ const ViewCustomer = () => {
           app.delivery_status.toLowerCase() === 'approval pending'
         );
       case 'spam':
-        return apps.filter(app => !!app.is_spam || isSteadfastSpam(app.phone_number));
+        return apps.filter(app => !!app.is_spam || isSteadfastSpam(app.id));
       default:
         return apps;
     }
@@ -767,10 +767,11 @@ const ViewCustomer = () => {
     }
   };
 
-  // Check fraud details for a customer — routed through backend to use its 30-min cache
-  const checkFraudDetails = async (phoneNumber) => {
+  // Check fraud details for a single order — keyed by orderId so same-phone orders stay independent
+  const checkFraudDetails = async (phoneNumber, orderId) => {
+    const key = orderId ?? phoneNumber;
     try {
-      setFraudDetails(prev => ({ ...prev, [phoneNumber]: { loading: true } }));
+      setFraudDetails(prev => ({ ...prev, [key]: { loading: true } }));
 
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const response = await axios.get(`${apiUrl}/courier-check/${phoneNumber}`, {
@@ -783,12 +784,13 @@ const ViewCustomer = () => {
       if (!sf || sf.error) {
         setFraudDetails(prev => ({
           ...prev,
-          [phoneNumber]: { loading: false, error: sf?.error || 'Stats unavailable' }
+          [key]: { loading: false, error: sf?.error || 'Stats unavailable' }
         }));
         return;
       }
 
       const mapped = {
+        total_parcels: sf.total ?? 0,
         total_delivered: sf.delivered ?? 0,
         total_cancelled: sf.cancelled ?? 0,
         total_fraud_reports: sf.fraud_reports ?? [],
@@ -796,7 +798,7 @@ const ViewCustomer = () => {
 
       setFraudDetails(prev => ({
         ...prev,
-        [phoneNumber]: {
+        [key]: {
           loading: false,
           data: mapped,
           isFraud: mapped.total_fraud_reports.length > 0
@@ -806,7 +808,7 @@ const ViewCustomer = () => {
       console.error("Error checking fraud details:", err);
       setFraudDetails(prev => ({
         ...prev,
-        [phoneNumber]: { loading: false, error: 'Error fetching fraud details' }
+        [key]: { loading: false, error: 'Error fetching fraud details' }
       }));
     }
   };
@@ -884,30 +886,10 @@ const ViewCustomer = () => {
       .catch(() => setFraudThreshold(0));
   }, []);
 
-  useEffect(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    const visible = filteredApplications.slice(start, start + itemsPerPage);
-    visible.forEach((app, idx) => {
-      const phone = app.phone_number;
-      if (!phone || fraudRequestedRef.current.has(phone)) return;
-      fraudRequestedRef.current.add(phone);
-      setTimeout(() => checkFraudDetails(phone), idx * 250);
-    });
-  }, [currentPage, filteredApplications]);
 
-  useEffect(() => {
-    if (!applications.length) return;
-    const unique = [...new Set(applications.map(a => a.phone_number).filter(Boolean))];
-    const pending = unique.filter(p => !fraudRequestedRef.current.has(p));
-    pending.forEach((phone, idx) => {
-      fraudRequestedRef.current.add(phone);
-      setTimeout(() => checkFraudDetails(phone), 2500 + idx * 400);
-    });
-  }, [applications]);
-
-  const isSteadfastSpam = (phone) => {
+  const isSteadfastSpam = (orderId) => {
     if (!fraudThreshold || fraudThreshold <= 0) return false;
-    const d = fraudDetails[phone]?.data;
+    const d = fraudDetails[orderId]?.data;
     if (!d) return false;
     const delivered = Number(d.total_delivered ?? 0);
     const cancelled = Number(d.total_cancelled ?? 0);
@@ -1042,7 +1024,7 @@ const ViewCustomer = () => {
                     app.delivery_status.toLowerCase() === 'new order';
                 }
                 if (tab.key === 'spam') {
-                  return !!app.is_spam || isSteadfastSpam(app.phone_number);
+                  return !!app.is_spam || isSteadfastSpam(app.id);
                 }
                 const expectedStatus = tab.key.replace(/_/g, ' ').toLowerCase();
                 const actualStatus = app.delivery_status ? app.delivery_status.toLowerCase() : '';
@@ -1103,6 +1085,7 @@ const ViewCustomer = () => {
           handleSelectAllChange={handleSelectAllChange}
           fraudDetails={fraudDetails}
           fraudThreshold={fraudThreshold}
+          checkFraudDetails={checkFraudDetails}
           handleImageClick={handleImageClick}
         />
       </div>

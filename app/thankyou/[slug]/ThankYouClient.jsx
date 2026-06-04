@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import axios from 'axios';
 import { useParams } from 'next/navigation';
 import { trackBrowserEvent, sendCAPIEvent, generateEventId, formatPhoneForFacebook } from '@/pixel';
+import { ownTrack } from '@/app/lib/tracking';
 import { FaCheckCircle, FaShoppingBag, FaUserAlt, FaTruck, FaPlusCircle, FaMinusCircle, FaGift } from 'react-icons/fa';
 import { HeaderContext } from '@/app/context/HeaderContext';
 import { ProductContext } from '@/app/context/ProductsContext';
@@ -597,6 +598,11 @@ export default function ThankYou() {
     axios.patch(`${apiUrl}/customers/${orderDetails.order_id}/pixel-fired`, { pixel_fired: eventName }, {
       signal: controller.signal
     }).catch(() => {});
+
+    // Own analytics order event — slug from referrer path or product slug
+    const refPath = typeof document !== 'undefined' ? new URL(document.referrer || location.href).pathname : '';
+    const ownSlug = refPath.split('/').filter(s => s && s !== 'thankyou')[0] || orderDetails?.product_name || 'unknown';
+    ownTrack('order', ownSlug);
 
     pixelInitialized.current = true;
 

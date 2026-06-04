@@ -6,6 +6,7 @@ const CustomerTable = ({
   applications,
   fraudDetails,
   fraudThreshold,
+  checkFraudDetails,
   currentItems,
   selectedApplications,
   handleCheckboxChange,
@@ -70,6 +71,7 @@ const CustomerTable = ({
               activeTab={activeTab}
               fraudDetails={fraudDetails}
               fraudThreshold={fraudThreshold}
+              checkFraudDetails={checkFraudDetails}
               handleImageClick={handleImageClick}
               onUpdateStatus={onUpdateStatus}
 

@@ -40,6 +40,7 @@ import {
   sendCAPIEvent,
   generateEventId,
 } from '@/pixel';
+import { ownTrack } from '@/app/lib/tracking';
 
 const SKIP_PREFIXES = ['/dashboard', '/editor', '/login', '/register'];
 
@@ -101,6 +102,10 @@ export default function PixelPageView() {
 
     trackBrowserEvent(pixel, 'PageView', { event_source_url: sourceUrl }, eventId);
     sendCAPIEvent(apiUrl, 'PageView', { event_source_url: sourceUrl }, {}, eventId, testEventCode);
+
+    // Own analytics page_view — slug = first path segment (e.g. /my-product → my-product)
+    const slug = path.split('/').filter(Boolean)[0] || 'home';
+    ownTrack('page_view', slug);
 
     log(`fired ✓ — browser + CAPI — eventId="${eventId}"`);
   }, []); // no deps — reads fresh values via ctxRef
