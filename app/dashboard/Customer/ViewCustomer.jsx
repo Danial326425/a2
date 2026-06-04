@@ -767,36 +767,46 @@ const ViewCustomer = () => {
     }
   };
 
-  // Check fraud details for a customer
+  // Check fraud details for a customer — routed through backend to use its 30-min cache
   const checkFraudDetails = async (phoneNumber) => {
     try {
       setFraudDetails(prev => ({ ...prev, [phoneNumber]: { loading: true } }));
 
-      const response = await axios.get(`${steadfastApiUrl}/fraud_check/${phoneNumber}`, {
-        headers: {
-          'Api-Key': steadfast.apiKey,
-          'Secret-Key': steadfast.secretKey,
-          'Content-Type': 'application/json'
-        },
-        timeout: 5000
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const response = await axios.get(`${apiUrl}/courier-check/${phoneNumber}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        timeout: 15000
       });
+
+      const sf = response.data?.external?.steadfast;
+
+      if (!sf || sf.error) {
+        setFraudDetails(prev => ({
+          ...prev,
+          [phoneNumber]: { loading: false, error: sf?.error || 'Stats unavailable' }
+        }));
+        return;
+      }
+
+      const mapped = {
+        total_delivered: sf.delivered ?? 0,
+        total_cancelled: sf.cancelled ?? 0,
+        total_fraud_reports: sf.fraud_reports ?? [],
+      };
 
       setFraudDetails(prev => ({
         ...prev,
         [phoneNumber]: {
           loading: false,
-          data: response.data,
-          isFraud: response.data.total_fraud_reports.length > 0
+          data: mapped,
+          isFraud: mapped.total_fraud_reports.length > 0
         }
       }));
     } catch (err) {
       console.error("Error checking fraud details:", err);
       setFraudDetails(prev => ({
         ...prev,
-        [phoneNumber]: {
-          loading: false,
-          error: 'Error fetching fraud details'
-        }
+        [phoneNumber]: { loading: false, error: 'Error fetching fraud details' }
       }));
     }
   };
@@ -875,7 +885,6 @@ const ViewCustomer = () => {
   }, []);
 
   useEffect(() => {
-    if (!steadfast.apiKey || !steadfast.secretKey) return;
     const start = (currentPage - 1) * itemsPerPage;
     const visible = filteredApplications.slice(start, start + itemsPerPage);
     visible.forEach((app, idx) => {
@@ -884,17 +893,17 @@ const ViewCustomer = () => {
       fraudRequestedRef.current.add(phone);
       setTimeout(() => checkFraudDetails(phone), idx * 250);
     });
-  }, [currentPage, filteredApplications, steadfast.apiKey, steadfast.secretKey]);
+  }, [currentPage, filteredApplications]);
 
   useEffect(() => {
-    if (!steadfast.apiKey || !steadfast.secretKey || !applications.length) return;
+    if (!applications.length) return;
     const unique = [...new Set(applications.map(a => a.phone_number).filter(Boolean))];
     const pending = unique.filter(p => !fraudRequestedRef.current.has(p));
     pending.forEach((phone, idx) => {
       fraudRequestedRef.current.add(phone);
       setTimeout(() => checkFraudDetails(phone), 2500 + idx * 400);
     });
-  }, [applications, steadfast.apiKey, steadfast.secretKey]);
+  }, [applications]);
 
   const isSteadfastSpam = (phone) => {
     if (!fraudThreshold || fraudThreshold <= 0) return false;
