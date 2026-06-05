@@ -25,8 +25,10 @@ const UpdatePixel = ({ formData, handleChange, handleSubmit, onCancel, loading, 
           name="is_purchase"
           checked={!!formData.is_purchase}
           onChange={handleChange}
-          label={formData.is_purchase ? "Purchase Event" : "Lead Event"}
-          description={formData.is_purchase ? "Fires Purchase conversion event" : "Fires Lead conversion event"}
+          label={formData.is_purchase ? "Purchase Event (Instant)" : "Lead Event (Confirm = Purchase)"}
+          description={formData.is_purchase
+            ? "Fires Purchase immediately when the order is placed — counts unconfirmed orders too"
+            : "Fires Lead on order placement, then Purchase only when you mark it Confirmed — best for COD"}
         />
       </div>
     </FormField>

@@ -14,13 +14,13 @@ export const trackBrowserEvent = (pixels, eventName, customData, eventId) => {
 
 export const sendCAPIEvent = async (apiUrl, eventName, customData, userData, eventId, testEventCode) => {
   try {
-    const response = await fetch(`${apiUrl}/pixel-events`, {
+    const response = await fetch(`${apiUrl}/fb-track`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        event_name: eventName,
+        event: eventName,
         event_id: eventId,
         event_time: Math.floor(Date.now() / 1000),
         custom_data: customData,

@@ -74,10 +74,10 @@ const CreatePixel = ({ onPixelCreated }) => {
               id="is_purchase"
               checked={formData.is_purchase}
               onChange={handleChange}
-              label={formData.is_purchase ? "Purchase Event (High Value)" : "Lead Event (Registration)"}
+              label={formData.is_purchase ? "Purchase Event (Instant)" : "Lead Event (Confirm = Purchase)"}
               description={formData.is_purchase
-                ? "Fires the Purchase event on order confirmation — better for e-commerce ROAS"
-                : "Fires the Lead event on order confirmation — use for lead-generation funnels"
+                ? "Fires Purchase immediately when the customer places the order (ThankYou page) — counts every order, even unconfirmed ones"
+                : "Fires Lead when the order is placed, then automatically fires Purchase only when you mark the order Confirmed in the dashboard — best for COD"
               }
             />
           </div>
