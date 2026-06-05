@@ -768,32 +768,39 @@ const ViewCustomer = () => {
   };
 
   // Check fraud details for a single order — keyed by orderId so same-phone orders stay independent
+  // Calls Steadfast directly from the browser — bypasses backend server
+  // so Hostinger outbound-block does not affect it.
   const checkFraudDetails = async (phoneNumber, orderId) => {
     const key = orderId ?? phoneNumber;
     try {
       setFraudDetails(prev => ({ ...prev, [key]: { loading: true } }));
 
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const response = await axios.get(`${apiUrl}/courier-check/${phoneNumber}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        timeout: 15000
-      });
-
-      const sf = response.data?.external?.steadfast;
-
-      if (!sf || sf.error) {
+      if (!steadfast?.apiKey || !steadfast?.secretKey) {
         setFraudDetails(prev => ({
           ...prev,
-          [key]: { loading: false, error: sf?.error || 'Response format error' }
+          [key]: { loading: false, error: 'Steadfast credentials not configured' }
         }));
         return;
       }
 
+      const response = await axios.get(
+        `https://portal.packzy.com/api/v1/fraud_check/${phoneNumber}`,
+        {
+          headers: {
+            'Api-Key':    steadfast.apiKey,
+            'Secret-Key': steadfast.secretKey,
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        }
+      );
+
+      const d = response.data;
       const mapped = {
-        total_parcels: sf.total ?? 0,
-        total_delivered: sf.delivered ?? 0,
-        total_cancelled: sf.cancelled ?? 0,
-        total_fraud_reports: sf.fraud_reports ?? [],
+        total_parcels:       d.total_parcels  ?? d.total_orders ?? 0,
+        total_delivered:     d.total_delivered  ?? 0,
+        total_cancelled:     d.total_cancelled  ?? 0,
+        total_fraud_reports: d.total_fraud_reports ?? [],
       };
 
       setFraudDetails(prev => ({
@@ -801,14 +808,19 @@ const ViewCustomer = () => {
         [key]: {
           loading: false,
           data: mapped,
-          isFraud: mapped.total_fraud_reports.length > 0
+          isFraud: mapped.total_fraud_reports.length > 0,
         }
       }));
     } catch (err) {
-      console.error("Error checking fraud details:", err);
+      const status = err?.response?.status;
+      const msg = status === 429
+        ? 'Steadfast rate limit — কিছুক্ষণ পর Retry করুন'
+        : status
+          ? `Steadfast error: HTTP ${status}`
+          : 'Steadfast connection failed';
       setFraudDetails(prev => ({
         ...prev,
-        [key]: { loading: false, error: 'Error fetching fraud details' }
+        [key]: { loading: false, error: msg }
       }));
     }
   };
