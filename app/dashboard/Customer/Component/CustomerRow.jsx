@@ -100,7 +100,15 @@ const CustomerRow = ({
               </span>
             )}
             {fd?.error && (
-              <span className="text-[10px] text-red-500 mt-1">Stats unavailable</span>
+              <span className="text-[10px] text-red-500 mt-1 flex items-center gap-1 flex-wrap">
+                ⚠ {fd.error}
+                <button
+                  onClick={() => checkFraudDetails?.(app.phone_number, app.id)}
+                  className="text-blue-500 hover:text-blue-700 underline ml-1"
+                >
+                  Retry
+                </button>
+              </span>
             )}
             {d && total > 0 && (
               <div className="mt-1 w-44">

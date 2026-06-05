@@ -784,7 +784,7 @@ const ViewCustomer = () => {
       if (!sf || sf.error) {
         setFraudDetails(prev => ({
           ...prev,
-          [key]: { loading: false, error: sf?.error || 'Stats unavailable' }
+          [key]: { loading: false, error: sf?.error || 'Response format error' }
         }));
         return;
       }
