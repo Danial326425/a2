@@ -38,13 +38,9 @@ const CartPanel = dynamic(() => import('../components/CartPanel'), {
   ssr: false,
 });
 
-// Lazy load components - commented out as components don't exist
-// const DistrictSelector = lazy(() => import('../components/OrderPage/DistrictSelector'));
-// const RelatedProducts = lazy(() => import('../components/OrderPage/RelatedProducts'));
-
 // Placeholder components
 const DistrictSelector = () => null;
-const RelatedProducts = ({ filterAllProducts, imageUrl }) => null;
+const RelatedProducts = dynamic(() => import('../components/OrderPage/RelatedProducts'), { ssr: false });
 
 const sliderSettings = {
   dots: false,
