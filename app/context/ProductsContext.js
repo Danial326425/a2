@@ -55,6 +55,7 @@ export default function ProductProvider({ children }) {
 
   const [testEventCode, setTestEventCode] = useState(seed?.testEventCode || []);
   const [isPurchase, setIsPurchase]       = useState(seed?.isPurchase || false);
+  const [trackingConfigReady, setTrackingConfigReady] = useState(false);
 
   const abortControllerRef = useRef(null);
   const isMountedRef       = useRef(false);
@@ -90,6 +91,7 @@ export default function ProductProvider({ children }) {
       setPixel(pixelIds);
       setTestEventCode(testCodes);
       setIsPurchase(purchase);
+      setTrackingConfigReady(true);
 
       writeCache({
         products: data.products || [],
@@ -135,6 +137,7 @@ export default function ProductProvider({ children }) {
     pixel,
     testEventCode,
     isPurchase,
+    trackingConfigReady,
     banners,
     loading,
     setLoading,
@@ -147,7 +150,7 @@ export default function ProductProvider({ children }) {
     refetchData: fetchAllData,
     apiUrl,
   }), [
-    products, filteredProducts, categories, pixel, testEventCode, isPurchase,
+    products, filteredProducts, categories, pixel, testEventCode, isPurchase, trackingConfigReady,
     banners, loading, error, footerMenus, contactInfo, logo, socialLinks,
     filterProductsByCategory, fetchAllData, apiUrl,
   ]);

@@ -19,6 +19,7 @@ const imgOpts = { maxSizeMB: 2, maxWidthOrHeight: 2560, useWebWorker: true, file
 const CreateProduct = ({ onProductCreated }) => {
   const [formData, setFormData] = useState({
     name: "", price: "", discount_price: "", max_per_order: "",
+    stock: "", low_stock_threshold: "",
     free_delivery_enabled: false, free_delivery_min_qty: "",
     category_id: [], images: [],
     slug: "", slugEdited: false, seo: { ...emptySeo },
@@ -259,6 +260,9 @@ const CreateProduct = ({ onProductCreated }) => {
     data.append("price", formData.price);
     data.append("discount_price", formData.discount_price || "");
     data.append("max_per_order", formData.max_per_order || "");
+    // Product-level stock applies only when there are no color variants.
+    if (!addColors) data.append("stock", formData.stock || "0");
+    data.append("low_stock_threshold", formData.low_stock_threshold || "5");
     data.append("free_delivery_enabled", formData.free_delivery_enabled ? "1" : "0");
     data.append("free_delivery_min_qty", formData.free_delivery_min_qty || "");
     formData.category_id.forEach((id, i) => data.append(`categories[${i}]`, id));
@@ -475,6 +479,17 @@ const CreateProduct = ({ onProductCreated }) => {
             <FormField label="Max Qty per Order" hint="Leave blank to use the global limit from Order Settings">
               <Input type="number" name="max_per_order" value={formData.max_per_order} onChange={handleChange} placeholder="e.g. 5" min="1" max="1000" />
             </FormField>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {!addColors && (
+                <FormField label="Stock (মোট Quantity)" hint="ভ্যারিয়েন্ট ছাড়া প্রোডাক্টের মোট স্টক। ভ্যারিয়েন্ট থাকলে Inventory সেকশন থেকে সেট করুন।">
+                  <Input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="0" min="0" />
+                </FormField>
+              )}
+              <FormField label="Low Stock Alert (থ্রেশহোল্ড)" hint="স্টক এই সংখ্যায় বা নিচে নামলে Low দেখাবে">
+                <Input type="number" name="low_stock_threshold" value={formData.low_stock_threshold} onChange={handleChange} placeholder="5" min="0" />
+              </FormField>
+            </div>
 
             <div className="pt-2 border-t border-gray-100">
               <Toggle

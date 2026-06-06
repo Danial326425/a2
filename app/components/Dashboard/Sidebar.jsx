@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   Package,
+  Boxes,
   ShoppingCart,
   Clock,
   Globe,
@@ -95,6 +96,21 @@ const MENU_GROUPS = [
             key: "landingPageSub",
             subItems: [
               { name: "View Landing Pages", key: "landingPageOverview" },
+            ],
+          },
+        ],
+      },
+      {
+        title: "Inventory",
+        icon: Boxes,
+        key: "inventory",
+        subMenus: [
+          {
+            title: "Inventory",
+            key: "inventorySub",
+            subItems: [
+              { name: "Stock Overview", key: "inventoryOverview" },
+              { name: "Stock Report", key: "stockReport" },
             ],
           },
         ],
@@ -369,6 +385,9 @@ const ROLE_ACCESS = {
       variationLibrarySub: ["variationLibrary"],
       landingPageSub: ["createLandingPage", "landingPageOverview"],
     },
+    inventory: {
+      inventorySub: ["inventoryOverview", "stockReport"],
+    },
     upsell: {
       upsellProductsSub: ["createUpsellProduct", "upsellProductOverview"],
       upsellSettingsSub: ["upsellSettings"],
@@ -407,6 +426,9 @@ const ROLE_ACCESS = {
       productsSub: ["createProduct", "productOverview"],
       categoriesSub: ["createCategory", "categoryOverview"],
       variationLibrarySub: ["variationLibrary"],
+    },
+    inventory: {
+      inventorySub: ["inventoryOverview", "stockReport"],
     },
     upsell: {
       upsellProductsSub: ["createUpsellProduct", "upsellProductOverview"],

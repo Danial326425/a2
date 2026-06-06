@@ -39,6 +39,7 @@ const ViewProduct = () => {
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     name: "", price: "", discount_price: "", max_per_order: "",
+    stock: "", low_stock_threshold: "",
     free_delivery_enabled: false, free_delivery_min_qty: "",
     category_id: [], clothing: false,
     slug: "", slugEdited: false, seo: { ...emptySeo },
@@ -105,6 +106,8 @@ const ViewProduct = () => {
       price: product.price || "",
       discount_price: product.discount_price || "",
       max_per_order: product.max_per_order ?? "",
+      stock: product.stock ?? "",
+      low_stock_threshold: product.low_stock_threshold ?? "",
       free_delivery_enabled: !!product.free_delivery_enabled,
       free_delivery_min_qty: product.free_delivery_min_qty ?? "",
       category_id: product.categories?.map(c => c.id) || [],
@@ -214,6 +217,11 @@ const ViewProduct = () => {
       data.append("price", formData.price);
       data.append("discount_price", formData.discount_price || "");
       data.append("max_per_order", formData.max_per_order || "");
+      // Product-level stock only applies when the product has no color variants.
+      if (!formData.colors || formData.colors.filter(c => c.color).length === 0) {
+        data.append("stock", formData.stock || "0");
+      }
+      data.append("low_stock_threshold", formData.low_stock_threshold || "5");
       data.append("free_delivery_enabled", formData.free_delivery_enabled ? "1" : "0");
       data.append("free_delivery_min_qty", formData.free_delivery_min_qty || "");
       formData.category_id.forEach((id, i) => data.append(`categories[${i}]`, id));

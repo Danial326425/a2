@@ -9,6 +9,7 @@ import CustomerTable from './Component/CustomerTable';
 import SearchAndFilter from './Component/SearchAndFilter';
 import UpdateCustomer from './UpdateCustomer';
 import SalesReportModal from './Component/SalesReportModal';
+import PartialRestockModal from './Component/PartialRestockModal';
 import CartProductDetails from './Component/CartProductDetails';
 import { ShoppingBag, Plus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -65,6 +66,7 @@ const ViewCustomer = () => {
   const [showSalesReport, setShowSalesReport] = useState(false);
   const [selectedProductDetails, setSelectedProductDetails] = useState(null);
   const [showProductModal, setShowProductModal] = useState(false);
+  const [restockOrder, setRestockOrder] = useState(null);
 
   const [pathaoData, setPathaoData] = useState({});
   const [fraudThreshold, setFraudThreshold] = useState(0);
@@ -923,6 +925,13 @@ const ViewCustomer = () => {
         selectedProductDetails={selectedProductDetails}
         setShowProductModal={setShowProductModal}
       />
+      {restockOrder && (
+        <PartialRestockModal
+          order={restockOrder}
+          onClose={() => setRestockOrder(null)}
+          onDone={() => { setRestockOrder(null); }}
+        />
+      )}
       <SearchAndFilter
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -1083,6 +1092,7 @@ const ViewCustomer = () => {
           orderStatuses={orderStatuses}
           fetchStatusOnClick={fetchStatusOnClick}
           onUpdateStatus={handleStatusUpdate}
+          onRestock={setRestockOrder}
           statusOptions={statusOptions}
           totalPages={totalPages}
           currentPage={currentPage}

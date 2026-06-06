@@ -25,6 +25,7 @@ const CustomerRow = ({
   orderStatuses,
   fetchStatusOnClick,
   onUpdateStatus,
+  onRestock,
   activeTab,
   fraudDetails,
   fraudThreshold,
@@ -390,6 +391,15 @@ const CustomerRow = ({
               </svg>
               <span>Awaiting Shipment</span>
             </div>
+          )}
+          {(app.delivery_status || '').toLowerCase().replace(/\s+/g, '_') === 'partial_delivered' && onRestock && (
+            <button
+              onClick={() => onRestock(app)}
+              className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded-md text-xs hover:bg-amber-100 transition-colors border border-amber-100"
+              title="ফেরত পণ্য স্টকে যোগ করুন"
+            >
+              <FaUndo className="text-xs" /> Restock
+            </button>
           )}
         </div>
           <div className="flex items-center p-4">

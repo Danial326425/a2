@@ -69,6 +69,8 @@ const CreateCartReward    = dynamic(() => import("./CartReward/CreateCartReward"
 const ViewCartReward      = dynamic(() => import("./CartReward/ViewCartReward"), { ssr: false });
 const SeoSettingsPage     = dynamic(() => import("./SeoSettings/SeoSettingsPage"), { ssr: false });
 const ViewReviews         = dynamic(() => import("./Reviews/ViewReviews"),         { ssr: false });
+const InventoryOverview   = dynamic(() => import("./Inventory/InventoryOverview"), { ssr: false });
+const StockReport         = dynamic(() => import("./Inventory/StockReport"),       { ssr: false });
 
 
 const Dashboard = () => {
@@ -154,7 +156,8 @@ const Dashboard = () => {
         "createUpsellProduct", "upsellProductOverview", "upsellSettings",
         "variationLibrary", "orderSettings",
         "createCoupon", "couponOverview", "createCartReward", "cartRewardOverview",
-        "reviewsOverview"
+        "reviewsOverview",
+        "inventoryOverview", "stockReport"
       ],
       moderator: [
         // Moderator specific access
@@ -162,7 +165,8 @@ const Dashboard = () => {
         "createCategory", "createProduct", "contactUsOverview", "createSteadfast", "steadfastOverview",
         "leadOverview", "createCommunity", "communityOverview","createBanner", "bannerOverview",
         "createUpsellProduct", "upsellProductOverview", "upsellSettings",
-        "variationLibrary", "reviewsOverview"
+        "variationLibrary", "reviewsOverview",
+        "inventoryOverview", "stockReport"
       ],
       user: ["dashboard"] // Basic user access
     };
@@ -314,6 +318,10 @@ const Dashboard = () => {
         return <ViewLead />;
       case "reviewsOverview":
         return <ViewReviews />;
+      case "inventoryOverview":
+        return <InventoryOverview />;
+      case "stockReport":
+        return <StockReport />;
       case "transactionOverview":
         return <ViewTransaction />;
       case "usersOverview":

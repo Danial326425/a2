@@ -440,7 +440,7 @@ export default function ThankYou() {
   const sanitizedId = params.slug?.replace(/[{}]/g, '') || '';
 
   const { loading: headerLoading } = useContext(HeaderContext);
-  const { pixel, testEventCode, isPurchase, apiUrl, loading: productLoading } = useContext(ProductContext);
+  const { pixel, testEventCode, isPurchase, trackingConfigReady, apiUrl, loading: productLoading } = useContext(ProductContext);
 
   const extractDistrict = (address) => {
     if (!address) return '';
@@ -561,7 +561,7 @@ export default function ThankYou() {
   }, [apiUrl]);
 
   useEffect(() => {
-    if (!pixel?.length || !orderDetails || pixelInitialized.current) return;
+    if (!trackingConfigReady || !pixel?.length || !orderDetails || pixelInitialized.current) return;
 
     const controller = new AbortController();
 
@@ -607,7 +607,7 @@ export default function ThankYou() {
     pixelInitialized.current = true;
 
     return () => controller.abort();
-  }, [pixel, isPurchase, orderDetails, apiUrl, testEventCode]);
+  }, [trackingConfigReady, pixel, isPurchase, orderDetails, apiUrl, testEventCode]);
 
   const handleLogin = async (phone) => {
     if (!apiUrl) return;

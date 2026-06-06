@@ -25,7 +25,8 @@ const CustomerTable = ({
   selectAll,
   handleSelectAllChange,
   handleImageClick,
-  onUpdateStatus
+  onUpdateStatus,
+  onRestock
 }) => {
 
 
@@ -74,6 +75,7 @@ const CustomerTable = ({
               checkFraudDetails={checkFraudDetails}
               handleImageClick={handleImageClick}
               onUpdateStatus={onUpdateStatus}
+              onRestock={onRestock}
 
             />
           ))}

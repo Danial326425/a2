@@ -418,6 +418,37 @@ const UpdateProduct = ({
             <p className="text-xs text-gray-500 mt-1">Leave blank to use the global limit from Order Settings.</p>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {!addColors && (
+              <div>
+                <label className="block text-gray-700 mb-1">Stock (মোট Quantity)</label>
+                <input
+                  type="number"
+                  name="stock"
+                  value={formData.stock ?? ""}
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="0"
+                  min="0"
+                />
+                <p className="text-xs text-gray-500 mt-1">ভ্যারিয়েন্ট ছাড়া প্রোডাক্টের মোট স্টক। ভ্যারিয়েন্ট থাকলে Inventory সেকশন থেকে সেট করুন।</p>
+              </div>
+            )}
+            <div>
+              <label className="block text-gray-700 mb-1">Low Stock Alert (থ্রেশহোল্ড)</label>
+              <input
+                type="number"
+                name="low_stock_threshold"
+                value={formData.low_stock_threshold ?? ""}
+                onChange={handleChange}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="5"
+                min="0"
+              />
+              <p className="text-xs text-gray-500 mt-1">স্টক এই সংখ্যায় বা নিচে নামলে Low Stock দেখাবে।</p>
+            </div>
+          </div>
+
           <div className="border-t border-gray-100 pt-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
