@@ -216,12 +216,14 @@ const CustomerRow = ({
           </div>
           <div className="text-sm text-gray-900">
             <div className="flex items-center flex-wrap gap-2">
-              {app.items && app.items.length > 0 ? (
-                app.items.map((item, index) => {
+              {app.items && app.items.filter(i => !i.product_name?.startsWith('[Upsell]')).length > 0 ? (
+                app.items
+                  .filter(i => !i.product_name?.startsWith('[Upsell]'))
+                  .map((item, index) => {
                   // Product এর মাধ্যমে images access
                   const hasProductImages = item.product_images && item.product_images.length > 0;
                   const hasColors = item.colors && item.colors.length > 0;
-                  
+
                   return (
                     <div key={`${item.id}-${index}`}>
                       {hasProductImages ? (
