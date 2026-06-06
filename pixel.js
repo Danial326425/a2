@@ -148,9 +148,17 @@ export const initFacebookPixels = (pixelIds) => {
   }
 
   newIds.forEach(pixelId => {
+    // Disable the SDK's automatic event collection BEFORE init. With autoConfig
+    // on, the Meta Pixel fires its OWN PageView on init and on every SPA
+    // history change (pushState) — which is the source of the duplicate
+    // PageView on route changes — plus automatic button-click events
+    // (SubscribedButtonClick). We fire every event explicitly (browser +
+    // CAPI, deduped by event_id), so the automatic ones are pure noise/dupes.
+    // Must run before init for the SDK to honour it.
+    window.fbq('set', 'autoConfig', false, pixelId);
     window.fbq('init', pixelId);
     window.__fbqPixelsInitialized.push(pixelId);
-    log(`fbq('init', '${pixelId}')`);
+    log(`fbq('init', '${pixelId}') (autoConfig off)`);
   });
 };
 

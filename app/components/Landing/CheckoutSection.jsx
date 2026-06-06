@@ -569,7 +569,14 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
           if (draftKey) sessionStorage.removeItem(draftKey);
           sessionStorage.removeItem('checkout-draft-v1');
         } catch {}
-        router.push(`/upsell/${orderId}`);
+        // Only route through /upsell when the backend confirms an ACTIVE upsell.
+        // Otherwise go straight to /thankyou — skipping the throwaway /upsell
+        // hop that would otherwise fire an extra PageView.
+        let body = null;
+        try { body = await res.json(); } catch {}
+        const hasUpsell = !!body?.has_upsell
+          || (Array.isArray(body?.upsell_product_ids) && body.upsell_product_ids.length > 0);
+        router.push(hasUpsell ? `/upsell/${orderId}` : `/thankyou/${orderId}`);
         return;
       }
       // Read error response so customer sees WHY it failed (e.g. IP limit).

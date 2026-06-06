@@ -1181,7 +1181,7 @@ const handleAddToCart = (product) => {
     setIsSubmitting(true);
 
     try {
-      await fetchWithRetry(() => apiService.post(`${apiUrl}/customers`, orderDetails, {
+      const res = await fetchWithRetry(() => apiService.post(`${apiUrl}/customers`, orderDetails, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -1193,7 +1193,13 @@ const handleAddToCart = (product) => {
       // Order succeeded — wipe the draft so a back-nav doesn't repopulate the
       // form with already-submitted data. Soft-nav keeps context tree alive.
       clearCheckoutDraft();
-      router.push(`/upsell/${randomNumber}`);
+      // Only route through /upsell when the backend confirms an ACTIVE upsell;
+      // otherwise go straight to /thankyou and skip the throwaway /upsell hop
+      // (which would fire an extra PageView when the upsell is inactive).
+      const body = res?.data;
+      const hasUpsell = !!body?.has_upsell
+        || (Array.isArray(body?.upsell_product_ids) && body.upsell_product_ids.length > 0);
+      router.push(hasUpsell ? `/upsell/${randomNumber}` : `/thankyou/${randomNumber}`);
       
     } catch (error) {
       let errorMessage = 'অর্ডার সাবমিশন ব্যর্থ হয়েছে';
