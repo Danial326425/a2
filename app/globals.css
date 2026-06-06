@@ -3,6 +3,12 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* This storefront + dashboard are light-only (every section hardcodes
+     bg-white / bg-gray-50). Pin the color-scheme so mobile browsers don't
+     auto-recolor form controls in dark mode — that was turning customers'
+     typed input text light gray on our white fields (readable for some users,
+     invisible for others depending on their phone's dark-mode setting). */
+  color-scheme: light;
 }
 
 @theme inline {
@@ -12,12 +18,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* NOTE: the previous `@media (prefers-color-scheme: dark)` override that flipped
+   --foreground to light (#ededed) was removed. The UI backgrounds are hardcoded
+   light, so light text rendered invisibly on white — it never produced a real
+   dark theme, only unreadable text on dark-mode devices. */
 
 /* Global horizontal overflow guard — prevents rogue elements (decorative
    blobs, wide carousels, tables, embeds) from pushing the page past the
@@ -87,4 +91,24 @@ input[type="reset"]:not(:disabled),
 input[type="checkbox"]:not(:disabled),
 input[type="radio"]:not(:disabled) {
   cursor: pointer;
+}
+
+/* Form-control text legibility — belt-and-suspenders alongside color-scheme:light.
+   Guarantees customer-typed text stays dark on our light fields regardless of the
+   device's dark-mode setting, and stops Chrome autofill from washing the text out. */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  color: #111827; /* gray-900 */
+}
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af; /* gray-400 */
+  opacity: 1;
+}
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #111827;
+  caret-color: #111827;
 }

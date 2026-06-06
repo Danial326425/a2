@@ -297,7 +297,17 @@ const CustomerRow = ({
                 <div className="space-y-1">
                   {app.upsell_items.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-2 bg-green-50 rounded-lg px-2 py-1">
-                      <span className="text-green-500 flex-shrink-0">✓</span>
+                      {item.image ? (
+                        <img
+                          src={`/api/storage/${item.image}`}
+                          alt={item.name}
+                          className="w-8 h-8 rounded object-contain border bg-white flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-400 flex-shrink-0 text-base">
+                          🎁
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <span className="text-gray-700 font-medium truncate block">{item.name}</span>
                         <div className="flex items-center gap-1 text-gray-500">
