@@ -6,7 +6,7 @@ import { OrderContext } from "../../context/OrderContext";
 import { ProductContext } from "../../context/ProductsContext";
 import bdLocations from "../../data/locations";
 import { useParams, useRouter } from "next/navigation";
-import { trackBrowserEvent, sendCAPIEvent, generateEventId } from "@/pixel";
+import { trackBrowserEvent, sendCAPIEvent, generateEventId, getFBP, getFBC } from "@/pixel";
 import { ownTrack } from "@/app/lib/tracking";
 import DeliveryCharge from "./DeliveryCharge";
 import CouponBox from "../CouponBox";
@@ -507,6 +507,9 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
     product_price:  String(Math.round((data?.product?.discount_price ?? data?.product?.price ?? 0) * qty)),
     quantity:       qty || 1,
     coupon_code:    appliedCoupon?.code || null,
+    // Browser identifiers for server-side Confirm Purchase CAPI matching (EMQ)
+    fbp:            getFBP(),
+    fbc:            getFBC(),
   }), [orderId, data?.product, name, phone, address, selectedDistrictName, selectedDivisionName,
        effectiveDelivery, total, deliveryNote, qty, selectedColor, selectedSize,
        selectedBumps, selectedBulkDiscount, appliedCoupon]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -12,7 +12,7 @@ import {
 import { useCart } from "@/app/context/CartContext";
 import { OrderContext } from "@/app/context/OrderContext";
 import { ProductContext } from "@/app/context/ProductsContext";
-import { trackBrowserEvent, sendCAPIEvent, generateEventId } from "@/pixel";
+import { trackBrowserEvent, sendCAPIEvent, generateEventId, getFBP, getFBC } from "@/pixel";
 import bdLocations from "@/app/data/locations";
 import DeliveryCharge from "@/app/components/Landing/DeliveryCharge";
 
@@ -190,6 +190,9 @@ export default function CheckoutPage() {
       payment_method: "cod",
       delivery_note: deliveryNote,
       coupon_code: coupon?.code || null,
+      // Browser identifiers for server-side Confirm Purchase CAPI matching (EMQ)
+      fbp: getFBP(),
+      fbc: getFBC(),
     };
 
     try {
