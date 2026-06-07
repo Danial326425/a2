@@ -36,16 +36,6 @@ const getCookie = (name) => {
   return parts.length === 2 ? parts.pop().split(';').shift() : null;
 };
 
-export const getFBC = () => {
-  if (typeof window === 'undefined') return null;
-  return getCookie('_fbc') || localStorage.getItem('fbc') || null;
-};
-
-export const getFBP = () => {
-  if (typeof window === 'undefined') return null;
-  return getCookie('_fbp') || localStorage.getItem('fbp') || null;
-};
-
 export const generateFBC = () => {
   const existing = getCookie('_fbc');
   if (existing) return existing;
@@ -56,6 +46,32 @@ export const generateFBC = () => {
   document.cookie = `_fbc=${fbc};path=/;max-age=7776000`;
   localStorage.setItem('fbc', fbc);
   return fbc;
+};
+
+export const getFBC = () => {
+  if (typeof window === 'undefined') return null;
+  // Existing cookie/storage first, else mint one from a ?fbclid still in the
+  // URL (covers ad traffic where the SDK hasn't written _fbc yet). Non-ad
+  // visitors legitimately have no fbc — that's expected, not a defect.
+  return getCookie('_fbc') || localStorage.getItem('fbc') || generateFBC();
+};
+
+export const getFBP = () => {
+  if (typeof window === 'undefined') return null;
+  const existing = getCookie('_fbp') || localStorage.getItem('fbp');
+  if (existing) return existing;
+  // No _fbp yet — the first CAPI event (e.g. PageView) often fires before the
+  // Pixel SDK has written the cookie, leaving server events without fbp and
+  // dragging EMQ down. Mint one in Meta's exact format and persist it; the SDK
+  // adopts an existing _fbp instead of overwriting it, so browser + CAPI (and
+  // the value we store on the order for the Confirm Purchase) all share the
+  // same fbp. Guarantees fbp coverage on every event.
+  const fbp = `fb.1.${Date.now()}.${Math.floor(Math.random() * 1e16)}`;
+  try {
+    document.cookie = `_fbp=${fbp};path=/;max-age=7776000`;
+    localStorage.setItem('fbp', fbp);
+  } catch { /* storage blocked — still return the value for this event */ }
+  return fbp;
 };
 
 export const formatPhoneForFacebook = (phone) => {
