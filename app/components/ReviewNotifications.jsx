@@ -12,7 +12,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SHOW_MS = 5500;   // how long each toast stays
-const GAP_MS = 2000;    // pause between toasts (next review within 2s)
+const GAP_MS = 5000;    // pause between toasts (next review after 5s)
 const FIRST_DELAY_MS = 3000; // start within 3s of page load
 
 // Elements that should hide the toast while they're on screen.
