@@ -175,7 +175,6 @@ const ProductCard = memo(function ProductCard({ product }) {
                                 width={40}
                                 height={40}
                                 className="w-full h-full object-cover"
-                                unoptimized
                               />
                             )}
                           </button>
@@ -241,7 +240,6 @@ function ProductImage({ product, hasColors }) {
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
-          unoptimized
         />
       );
     }
@@ -256,7 +254,6 @@ function ProductImage({ product, hasColors }) {
               height={500}
               className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
-              unoptimized
             />
           </div>
         ))}
@@ -270,7 +267,6 @@ function ProductImage({ product, hasColors }) {
       fill
       className="object-cover transition-transform duration-500 group-hover:scale-105"
       sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
-      unoptimized
     />
   );
 }

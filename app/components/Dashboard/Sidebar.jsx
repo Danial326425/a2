@@ -218,6 +218,12 @@ const MENU_GROUPS = [
         directItem: "trackingOverview",
       },
       {
+        title: "Ads Performance",
+        icon: BarChart2,
+        key: "adsPerformance",
+        directItem: "adsPerformance",
+      },
+      {
         title: "SEO Settings",
         icon: Search,
         key: "seo",
@@ -413,6 +419,7 @@ const ROLE_ACCESS = {
     },
     pixel: { pixelSub: ["createPixel", "PixelOverview"] },
     ownTracking: ["trackingOverview"],
+    adsPerformance: ["adsPerformance"],
     seo: ["seoSettings"],
     coupons: { couponsSub: ["createCoupon", "couponOverview"] },
     cartRewards: { cartRewardsSub: ["createCartReward", "cartRewardOverview"] },

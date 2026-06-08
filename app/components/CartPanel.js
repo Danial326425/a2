@@ -228,7 +228,6 @@ function CartItem({ item, imageProxyUrl, updateItemQuantity, removeItem }) {
           width={96}
           height={96}
           className="h-full w-full object-cover object-center"
-          unoptimized
         />
       </div>
 

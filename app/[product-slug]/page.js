@@ -121,15 +121,13 @@ export default async function ProductPage({ params }) {
 
   if (!initialProduct) notFound();
 
-  const primaryImagePath = pickPrimaryImage(initialProduct);
-  const primaryImageUrl = buildImageUrl(primaryImagePath);
-
   return (
     <>
       <ProductJsonLd product={initialProduct} />
-      {primaryImageUrl && (
-        <link rel="preload" as="image" href={primaryImageUrl} fetchPriority="high" />
-      )}
+      {/* No manual <link rel=preload> here: it would preload the RAW backend
+          image, but next/image fetches an optimized /_next/image URL — a
+          mismatch that wastes bandwidth. The hero <Image priority> handles
+          preloading the optimized image itself. */}
       <OrderPageClient slug={slug} initialProduct={initialProduct} />
     </>
   );

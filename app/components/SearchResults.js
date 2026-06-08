@@ -27,7 +27,6 @@ export default function SearchResults({ products }) {
                 fill
                 sizes="(max-width: 768px) 50vw, 200px"
                 className="object-cover group-hover:scale-105 transition-transform"
-                unoptimized
               />
             </div>
             <div className="p-3">

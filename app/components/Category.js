@@ -116,7 +116,6 @@ function CategoryCard({ category, imageProxyUrl, onClick }) {
                 onError={(e) => {
                   e.target.src = '/images/category-placeholder.png';
                 }}
-                unoptimized
               />
             </div>
           </div>

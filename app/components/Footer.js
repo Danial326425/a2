@@ -52,7 +52,6 @@ const Footer = React.memo(function Footer() {
               width={180}
               height={48}
               className="h-12 w-auto"
-              unoptimized
             />
           )}
           {contactInfo?.slogan && (

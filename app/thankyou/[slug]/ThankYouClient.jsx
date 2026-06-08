@@ -599,9 +599,19 @@ export default function ThankYou() {
       signal: controller.signal
     }).catch(() => {});
 
-    // Own analytics order event — slug from referrer path or product slug
-    const refPath = typeof document !== 'undefined' ? new URL(document.referrer || location.href).pathname : '';
-    const ownSlug = refPath.split('/').filter(s => s && s !== 'thankyou')[0] || orderDetails?.product_name || 'unknown';
+    // Own analytics order event — attribute to the originating product slug
+    // saved at checkout (reliable), so view → checkout → order → CVR all land
+    // on the same product row. Falls back to the referrer/product name only if
+    // the saved slug is missing (e.g. older sessions).
+    let ownSlug = '';
+    try {
+      ownSlug = sessionStorage.getItem('own_order_slug') || '';
+      if (ownSlug) sessionStorage.removeItem('own_order_slug');
+    } catch {}
+    if (!ownSlug) {
+      const refPath = typeof document !== 'undefined' ? new URL(document.referrer || location.href).pathname : '';
+      ownSlug = refPath.split('/').filter(s => s && s !== 'thankyou')[0] || orderDetails?.product_name || 'unknown';
+    }
     ownTrack('order', ownSlug);
 
     pixelInitialized.current = true;

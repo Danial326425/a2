@@ -71,6 +71,7 @@ const SeoSettingsPage     = dynamic(() => import("./SeoSettings/SeoSettingsPage"
 const ViewReviews         = dynamic(() => import("./Reviews/ViewReviews"),         { ssr: false });
 const InventoryOverview   = dynamic(() => import("./Inventory/InventoryOverview"), { ssr: false });
 const StockReport         = dynamic(() => import("./Inventory/StockReport"),       { ssr: false });
+const AdsPerformance      = dynamic(() => import("./AdsPerformance/AdsPerformance"), { ssr: false });
 
 
 const Dashboard = () => {
@@ -157,7 +158,8 @@ const Dashboard = () => {
         "variationLibrary", "orderSettings",
         "createCoupon", "couponOverview", "createCartReward", "cartRewardOverview",
         "reviewsOverview",
-        "inventoryOverview", "stockReport"
+        "inventoryOverview", "stockReport",
+        "adsPerformance"
       ],
       moderator: [
         // Moderator specific access
@@ -284,6 +286,8 @@ const Dashboard = () => {
 
       case "trackingOverview":
         return <OwnTracking />;
+      case "adsPerformance":
+        return <AdsPerformance />;
       case "seoSettings":
         return <SeoSettingsPage />;
 

@@ -14,6 +14,7 @@ import axios from 'axios';
 import { HeaderContext } from '../context/HeaderContext';
 import { ProductContext } from '../context/ProductsContext';
 import { trackBrowserEvent, sendCAPIEvent, generateEventId } from '@/pixel';
+import { ownTrack } from '@/app/lib/tracking';
 import bdLocations from '../data/locations';
 import { useCart } from '../context/CartContext';
 import DeliveryCharge from '../components/Landing/DeliveryCharge';
@@ -179,7 +180,7 @@ const ImageWrapper = ({ src, alt, className, style, width, height, priority = fa
       height={height || 400}
       className={className}
       style={style}
-      preload={priority}
+      priority={priority}
       sizes={sizes}
       placeholder="blur"
       blurDataURL={BLUR_DATA_URL}
@@ -234,7 +235,7 @@ const SimpleImageZoom = ({ src, alt, className, style, priority = false, sizes }
           transformOrigin: `${position.x}% ${position.y}%`,
           transition: 'transform 0.2s ease-out',
         }}
-        preload={priority}
+        priority={priority}
         placeholder="blur"
         blurDataURL={BLUR_DATA_URL}
         onError={() => setIsError(true)}
@@ -1039,6 +1040,20 @@ const handleAddToCart = (product) => {
     };
   }, [name, phone, products, dataSaved, apiUrl, isSubmitting, address, selectedDistrictName, selectedDivisionName, quantity, totalPrice, apiService]);
 
+  // ── Own analytics: checkout_view ─────────────────────────────────────────
+  // The product page IS the checkout page, so "viewing checkout" = the customer
+  // actually starting to fill the order form. Fires once, keyed to the product
+  // `slug` so view → checkout → order → CVR all aggregate on the same row.
+  const checkoutViewFired = useRef(false);
+  useEffect(() => {
+    if (checkoutViewFired.current) return;
+    const started = (phone && phone.length >= 3) || (name && name.trim().length >= 2);
+    if (started) {
+      checkoutViewFired.current = true;
+      ownTrack('checkout_view', slug);
+    }
+  }, [phone, name, slug]);
+
 
       const selectedBulkDiscounts = products.bulk_discounts?.filter(d => 
       selectedBulkDiscount?.id === d.id && quantity === d.offer_quantity
@@ -1196,6 +1211,10 @@ const handleAddToCart = (product) => {
       // Only route through /upsell when the backend confirms an ACTIVE upsell;
       // otherwise go straight to /thankyou and skip the throwaway /upsell hop
       // (which would fire an extra PageView when the upsell is inactive).
+      // Remember which product slug this order came from so the ThankYou page
+      // attributes the `order` analytics event to the right product row
+      // (instead of guessing from the referrer / order_id).
+      try { sessionStorage.setItem('own_order_slug', slug); } catch {}
       const body = res?.data;
       const hasUpsell = !!body?.has_upsell
         || (Array.isArray(body?.upsell_product_ids) && body.upsell_product_ids.length > 0);

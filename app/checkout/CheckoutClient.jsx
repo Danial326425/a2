@@ -361,7 +361,6 @@ export default function CheckoutPage() {
                           fill
                           className="object-cover object-center"
                           sizes="80px"
-                          unoptimized
                         />
                       </div>
                       <div className="flex-1 flex flex-col">

@@ -51,7 +51,6 @@ function BannerSlide({ banner }) {
           className="object-cover"
           sizes="100vw"
           priority
-          unoptimized
         />
 
         {(banner.title || banner.description || banner.link) && (

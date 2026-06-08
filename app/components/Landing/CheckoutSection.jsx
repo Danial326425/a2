@@ -572,6 +572,8 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
         // Only route through /upsell when the backend confirms an ACTIVE upsell.
         // Otherwise go straight to /thankyou — skipping the throwaway /upsell
         // hop that would otherwise fire an extra PageView.
+        // Attribute the order analytics event to this landing slug on ThankYou.
+        try { sessionStorage.setItem('own_order_slug', slug); } catch {}
         let body = null;
         try { body = await res.json(); } catch {}
         const hasUpsell = !!body?.has_upsell

@@ -9,6 +9,11 @@ const nextConfig = {
     root: __dirname,
   },
   images: {
+    // Serve modern, much smaller formats (AVIF → WebP) from the optimizer.
+    formats: ['image/avif', 'image/webp'],
+    // Cache optimized images server-side for 31 days so the LCP image and
+    // repeat views aren't re-optimized every request.
+    minimumCacheTTL: 2678400,
     // Next.js 16 blocks local-IP image optimization by default. We host the
     // Laravel API on localhost:8000 in dev, so allow it here. In production
     // the backend lives on a real hostname so this flag has no effect.
