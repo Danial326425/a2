@@ -15,6 +15,7 @@ import { HeaderContext } from '../context/HeaderContext';
 import { ProductContext } from '../context/ProductsContext';
 import { trackBrowserEvent, sendCAPIEvent, generateEventId } from '@/pixel';
 import { ownTrack } from '@/app/lib/tracking';
+import ReviewNotifications from '@/app/components/ReviewNotifications';
 import bdLocations from '../data/locations';
 import { useCart } from '../context/CartContext';
 import DeliveryCharge from '../components/Landing/DeliveryCharge';
@@ -261,10 +262,12 @@ function Stars({ rating, size = 18 }) {
   );
 }
 
-// Mask phone: 017****678
+// Mask phone: keep first 5 + last 2 digits, star the middle → 01712****89
 function maskPhone(phone) {
-  if (!phone || phone.length < 6) return phone;
-  return phone.slice(0, 3) + '****' + phone.slice(-3);
+  if (!phone) return '';
+  const d = String(phone).replace(/\D/g, '');
+  if (d.length <= 7) return d; // too short to mask meaningfully
+  return d.slice(0, 5) + '*'.repeat(d.length - 7) + d.slice(-2);
 }
 
 // ── Star Picker ───────────────────────────────────────────────────────────────
@@ -346,7 +349,7 @@ function ReviewsSection({ productId, apiUrl }) {
   const inp = "w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400";
 
   return (
-    <div className="mt-10 max-w-2xl mx-auto px-4 pb-12">
+    <div id="reviews" className="mt-10 max-w-2xl mx-auto px-4 pb-12">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-5">
@@ -490,17 +493,24 @@ function ReviewsSection({ productId, apiUrl }) {
                     {new Date(r.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}
                   </span>
                 </div>
-                {/* Name + verified */}
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-semibold text-gray-800">
-                    {maskPhone(r.reviewer_name)}
-                  </span>
-                  <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
-                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                    </svg>
-                    Verified Purchase
-                  </span>
+                {/* Name + verified (row), phone below the name */}
+                <div className="mb-2">
+                  <div className="flex items-center flex-wrap gap-2">
+                    <span className="text-sm font-semibold text-gray-800">
+                      {r.reviewer_name}
+                    </span>
+                    <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
+                      <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                      </svg>
+                      Verified Purchase
+                    </span>
+                  </div>
+                  {r.reviewer_phone && (
+                    <div className="text-xs text-gray-400 font-medium tracking-wide mt-0.5">
+                      {r.reviewer_phone}
+                    </div>
+                  )}
                 </div>
                 {/* Review text */}
                 {r.review && (
@@ -2301,6 +2311,7 @@ const handleAddToCart = (product) => {
                 {/* Order Button */}
               { showForm && <button
                   type="submit"
+                  id="confirm-order-btn"
                   disabled={isSubmitting}
                   className={`w-full mt-6 py-4 bg-gradient-to-r from-green-500 to-green-700 text-white rounded-lg hover:from-green-600 hover:to-green-800 transition-all transform hover:scale-[1.01] flex items-center justify-center space-x-2 text-lg font-bold shadow-lg hover:shadow-xl ${
                     isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
@@ -2361,7 +2372,12 @@ const handleAddToCart = (product) => {
         />
 
         {/* ── Reviews Section ──────────────────────────────────────────────── */}
-        {products?.id && products?.reviews_enabled && <ReviewsSection productId={products.id} apiUrl={apiUrl} />}
+        {products?.id && products?.reviews_enabled && (
+          <>
+            <ReviewsSection productId={products.id} apiUrl={apiUrl} />
+            <ReviewNotifications productId={products.id} apiUrl={apiUrl} />
+          </>
+        )}
 
         <Suspense fallback={<div>Loading related products...</div>}>
           <RelatedProducts

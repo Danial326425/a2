@@ -18,7 +18,7 @@ function StarDisplay({ rating, size = "text-base" }) {
   );
 }
 
-function ReviewCard({ review, onApprove, onDelete, approving, deleting }) {
+function ReviewCard({ review, onApprove, onDelete, onEdit, approving, deleting }) {
   return (
     <div className={`bg-white rounded-2xl border shadow-sm p-4 transition-all ${review.is_approved ? "border-green-200" : "border-gray-200"}`}>
       <div className="flex items-start justify-between gap-3">
@@ -74,6 +74,12 @@ function ReviewCard({ review, onApprove, onDelete, approving, deleting }) {
           {approving ? "..." : review.is_approved ? "✗ প্রত্যাখ্যান করুন" : "✓ অনুমোদন করুন"}
         </button>
         <button
+          onClick={() => onEdit(review)}
+          className="px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition"
+        >
+          ✎ এডিট
+        </button>
+        <button
           onClick={() => onDelete(review.id)}
           disabled={deleting}
           className="px-4 py-1.5 rounded-xl text-xs font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition disabled:opacity-50"
@@ -85,11 +91,71 @@ function ReviewCard({ review, onApprove, onDelete, approving, deleting }) {
   );
 }
 
+function EditReviewModal({ review, onClose, onSave, saving }) {
+  const [form, setForm] = useState({
+    reviewer_name: review.reviewer_name || "",
+    reviewer_phone: review.reviewer_phone || "",
+    rating: review.rating || 5,
+    review: review.review || "",
+    is_approved: !!review.is_approved,
+  });
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const inp = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h3 className="font-bold text-gray-900">রিভিউ এডিট</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl leading-none">×</button>
+        </div>
+        <div className="p-5 space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">নাম</label>
+            <input className={inp} value={form.reviewer_name} onChange={e => set("reviewer_name", e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">মোবাইল নম্বর</label>
+            <input className={inp} value={form.reviewer_phone} onChange={e => set("reviewer_phone", e.target.value)} placeholder="01XXXXXXXXX" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">রেটিং</label>
+            <div className="flex items-center gap-1">
+              {STARS.map(i => (
+                <button key={i} type="button" onClick={() => set("rating", i)}
+                  className="text-2xl leading-none transition-transform hover:scale-110"
+                  style={{ color: i <= form.rating ? "#FBBF24" : "#D1D5DB" }}>★</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">রিভিউ</label>
+            <textarea className={inp} rows={3} value={form.review} onChange={e => set("review", e.target.value)} />
+          </div>
+          <label className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2.5 cursor-pointer">
+            <span className="text-sm font-semibold text-gray-700">অনুমোদিত (Approved)</span>
+            <input type="checkbox" checked={form.is_approved} onChange={e => set("is_approved", e.target.checked)} className="w-5 h-5 accent-green-600" />
+          </label>
+        </div>
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100">বাতিল</button>
+          <button onClick={() => onSave(review.id, form)} disabled={saving}
+            className="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">
+            {saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ViewReviews() {
   const [reviews, setReviews]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [filter, setFilter]       = useState("all"); // all | pending | approved
   const [actionIds, setActionIds] = useState({ approving: null, deleting: null });
+  const [editing, setEditing]     = useState(null); // review being edited
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -123,6 +189,17 @@ export default function ViewReviews() {
       setReviews(prev => prev.filter(r => r.id !== id));
     } catch { /* ignore */ }
     finally { setActionIds(p => ({ ...p, deleting: null })); }
+  };
+
+  const handleSaveEdit = async (id, form) => {
+    setSavingEdit(true);
+    try {
+      const res = await axios.put(`${apiUrl}/admin/reviews/${id}`, form, { headers });
+      const updated = res.data.review || { ...form, id };
+      setReviews(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r));
+      setEditing(null);
+    } catch { /* ignore */ }
+    finally { setSavingEdit(false); }
   };
 
   const filtered = filter === "all" ? reviews
@@ -189,11 +266,21 @@ export default function ViewReviews() {
               review={review}
               onApprove={handleApprove}
               onDelete={handleDelete}
+              onEdit={setEditing}
               approving={actionIds.approving === review.id}
               deleting={actionIds.deleting === review.id}
             />
           ))}
         </div>
+      )}
+
+      {editing && (
+        <EditReviewModal
+          review={editing}
+          saving={savingEdit}
+          onClose={() => setEditing(null)}
+          onSave={handleSaveEdit}
+        />
       )}
     </div>
   );
