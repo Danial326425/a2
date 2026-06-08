@@ -54,12 +54,11 @@ const CreateOrder = ({ onOrderCreated }) => {
 
   const handleDeliveryChange = (e) => {
     const charge = deliveryCharges.find(d => String(d.id) === e.target.value);
+    // Only set the delivery charge — never auto-fill the address with the zone
+    // name (e.g. "ঢাকা সিটির বাহিরে"). The admin types the real address.
     setFormData(prev => ({
       ...prev,
       delivery_charge: charge ? charge.delivery_charge : "",
-      customer_address: charge
-        ? prev.customer_address || charge.district_name
-        : prev.customer_address,
     }));
   };
 
@@ -163,12 +162,13 @@ const CreateOrder = ({ onOrderCreated }) => {
               </Select>
             </FormField>
             <FormField label="Customer Address" required>
-              <Input
+              <Textarea
                 name="customer_address"
                 value={formData.customer_address}
                 onChange={handleChange}
                 required
-                placeholder="Full delivery address"
+                rows={4}
+                placeholder="সম্পূর্ণ ঠিকানা — গ্রাম/রোড, থানা, জেলা, বিভাগ"
               />
             </FormField>
           </div>

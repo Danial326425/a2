@@ -12,7 +12,7 @@ import SalesReportModal from './Component/SalesReportModal';
 import PartialRestockModal from './Component/PartialRestockModal';
 import CartProductDetails from './Component/CartProductDetails';
 import { ShoppingBag, Plus } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { PageHeader, ActionBtn } from '../../components/Dashboard/DashUI';
 
 const apiUrl = config.apiUrl;
@@ -20,7 +20,8 @@ const steadfastApiUrl = 'https://portal.packzy.com/api/v1';
 const pathaoApiUrl = 'https://courier-api-sandbox.pathao.com';
 
 const ViewCustomer = () => {
-  const [, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [applications, setApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -915,7 +916,7 @@ const ViewCustomer = () => {
         badge={applications.length}
         subtitle="Manage orders, update statuses, and dispatch via courier"
         action={
-          <ActionBtn variant="primary" icon={Plus} onClick={() => setSearchParams({ menu: "createOrder" })}>
+          <ActionBtn variant="primary" icon={Plus} onClick={() => router.push(`${pathname}?menu=createOrder`)}>
             Create Order
           </ActionBtn>
         }
