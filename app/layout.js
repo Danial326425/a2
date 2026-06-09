@@ -146,19 +146,13 @@ export async function generateMetadata() {
 
     icons: buildIcons(seo),
 
-    ...((seo.google_verification || seo.bing_verification || seo.facebook_domain_verification)
+    // NOTE: facebook-domain-verification is emitted directly in the <head> in
+    // RootLayout (the metadata.verification.other API is unreliable here).
+    ...((seo.google_verification || seo.bing_verification)
       ? {
           verification: {
             ...(seo.google_verification ? { google: seo.google_verification } : {}),
-            ...((seo.bing_verification || seo.facebook_domain_verification)
-              ? {
-                  other: {
-                    ...(seo.bing_verification ? { 'msvalidate.01': seo.bing_verification } : {}),
-                    // Facebook/Meta domain verification → <meta name="facebook-domain-verification" content="...">
-                    ...(seo.facebook_domain_verification ? { 'facebook-domain-verification': seo.facebook_domain_verification } : {}),
-                  },
-                }
-              : {}),
+            ...(seo.bing_verification ? { other: { 'msvalidate.01': seo.bing_verification } } : {}),
           },
         }
       : {}),
@@ -197,6 +191,15 @@ export default async function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        {/* Facebook/Meta domain verification — rendered directly in <head> so
+            it's in the static server HTML (Meta rejects JS-injected tags). Set
+            from Dashboard → SEO Settings → Verification. The Next.js metadata
+            `verification.other` API is unreliable in this build, so we emit the
+            tag here instead. */}
+        {seo.facebook_domain_verification && (
+          <meta name="facebook-domain-verification" content={seo.facebook_domain_verification} />
+        )}
+
         {/* JSON-LD structured data from dashboard (advanced SEO field).
             Kept as a raw <script type="application/ld+json"> tag so search
             engines parse it; not executed JS so XSS-safe by content-type. */}
