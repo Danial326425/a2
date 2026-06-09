@@ -130,6 +130,7 @@ export async function generateMetadata() {
     image:       seo.og_image,
     path:        '/',
     type:        seo.og_type || 'website',
+    siteUrl:     seo.site_url, // dashboard-set canonical base (fixes localhost og:image)
   });
 
   return {

@@ -30,7 +30,14 @@ import { config } from '@/config/config';
 
 const DEFAULT_DESC =
   'Cash on delivery shopping in Bangladesh — quality products, fast doorstep delivery.';
-const DEFAULT_OG_IMAGE = `${config.siteUrl}/og-default.png`;
+const DEFAULT_OG_IMAGE_PATH = '/og-default.png';
+
+/** Resolve the canonical site base: dashboard "Site URL" wins, else env/config.
+ *  Strips trailing slashes. This is what keeps og:image / canonical off
+ *  http://localhost:3000 in production. */
+function siteBase(siteUrl) {
+  return String(siteUrl || config.siteUrl || '').replace(/\/+$/, '');
+}
 
 /* ── utilities ─────────────────────────────────────────────────────────── */
 
@@ -50,10 +57,11 @@ function stripHtml(html) {
 
 /** Resolve an image input to an absolute URL. Accepts a full URL, a relative
  *  path (resolved against siteUrl), or a backend-relative storage path. */
-function resolveImage(image) {
-  if (!image) return DEFAULT_OG_IMAGE;
+function resolveImage(image, base = config.siteUrl) {
+  const b = siteBase(base);
+  if (!image) return `${b}${DEFAULT_OG_IMAGE_PATH}`;
   if (/^https?:\/\//i.test(image)) return image;
-  if (image.startsWith('/')) return `${config.siteUrl}${image}`;
+  if (image.startsWith('/')) return `${b}${image}`;
   return `${config.backendUrl}/storage/${image}`;
 }
 
@@ -90,16 +98,18 @@ export function buildSEO(opts = {}) {
     locale = config.defaultLocale,
     price,
     availability,
+    siteUrl,
   } = opts;
 
+  const base       = siteBase(siteUrl);
   const finalTitle = buildTitle(title);
   const finalDesc  = clamp(description ? stripHtml(description) : DEFAULT_DESC, 160);
-  const finalImg   = resolveImage(image);
-  const canonical  = `${config.siteUrl}${path.startsWith('/') ? path : `/${path}`}`;
+  const finalImg   = resolveImage(image, base);
+  const canonical  = `${base}${path.startsWith('/') ? path : `/${path}`}`;
 
   /** @type {import('next').Metadata} */
   const metadata = {
-    metadataBase: new URL(config.siteUrl),
+    metadataBase: new URL(base),
     // `absolute` bypasses the root layout's title template — the template is
     // only for pages that return a plain string title (not via buildSEO).
     title: { absolute: finalTitle },

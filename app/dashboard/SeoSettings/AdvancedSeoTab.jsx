@@ -4,10 +4,19 @@ import { ShieldAlert } from "lucide-react";
 import { FormField, InfoBox, Textarea } from "@/app/components/Dashboard/DashUI";
 import ScriptEditor from "./shared/ScriptEditor";
 import JsonLdEditor from "./shared/JsonLdEditor";
+import SeoInput from "./shared/SeoInput";
 
 export default function AdvancedSeoTab({ settings, updateField, errors }) {
   return (
     <div className="space-y-5">
+      <FormField label="Site URL (Canonical Base)">
+        <SeoInput
+          value={settings.site_url}
+          onChange={(v) => updateField("site_url", v.trim().replace(/\/+$/, ""))}
+          helpText="তোমার লাইভ ডোমেইন — যেমন https://reviewinsiderlab.com (শেষে / দিও না)। এটা og:image ও canonical URL ঠিক করে — খালি থাকলে localhost চলে আসে।"
+        />
+      </FormField>
+
       <InfoBox variant="warning" className="flex items-center gap-2">
         <ShieldAlert size={15} />
         Only paste trusted scripts. Malicious code can compromise your site.
