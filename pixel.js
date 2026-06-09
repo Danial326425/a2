@@ -80,6 +80,22 @@ export const getFBP = () => {
   return fbp;
 };
 
+// Persistent anonymous visitor id used as external_id on events that have no
+// logged-in customer yet (PageView, ViewContent, InitiateCheckout). Reuses the
+// same `_own_vid` key as the own-analytics tracker so it's stable per browser
+// and boosts Event Match Quality. Backend hashes external_id before sending.
+export const getExternalId = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    let vid = localStorage.getItem('_own_vid');
+    if (!vid) {
+      vid = 'v_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem('_own_vid', vid);
+    }
+    return vid;
+  } catch { return null; }
+};
+
 export const formatPhoneForFacebook = (phone) => {
   if (!phone) return '';
   const digits = phone.replace(/\D/g, '');
@@ -235,6 +251,14 @@ export const sendCAPIEvent = (
     ...customData,
     ...userData,
   };
+
+  // Ensure every event carries an external_id (boosts Event Match Quality).
+  // Order events already supply their own (customer id / phone) — keep those;
+  // anonymous events (PageView/ViewContent/InitiateCheckout) fall back to the
+  // persistent visitor id.
+  if (!payload.external_id) {
+    payload.external_id = getExternalId();
+  }
 
   if (testEventCodes?.[0]) {
     payload.test_event_code = testEventCodes[0];
