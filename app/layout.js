@@ -146,11 +146,19 @@ export async function generateMetadata() {
 
     icons: buildIcons(seo),
 
-    ...((seo.google_verification || seo.bing_verification)
+    ...((seo.google_verification || seo.bing_verification || seo.facebook_domain_verification)
       ? {
           verification: {
             ...(seo.google_verification ? { google: seo.google_verification } : {}),
-            ...(seo.bing_verification ? { other: { 'msvalidate.01': seo.bing_verification } } : {}),
+            ...((seo.bing_verification || seo.facebook_domain_verification)
+              ? {
+                  other: {
+                    ...(seo.bing_verification ? { 'msvalidate.01': seo.bing_verification } : {}),
+                    // Facebook/Meta domain verification → <meta name="facebook-domain-verification" content="...">
+                    ...(seo.facebook_domain_verification ? { 'facebook-domain-verification': seo.facebook_domain_verification } : {}),
+                  },
+                }
+              : {}),
           },
         }
       : {}),

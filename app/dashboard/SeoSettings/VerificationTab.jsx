@@ -24,6 +24,14 @@ export default function VerificationTab({ settings, updateField, errors }) {
         <SeoInput label="Bing Verification Code" value={settings.bing_verification} onChange={(v) => updateField("bing_verification", v)} helpText="Paste only the verification content value." />
       </FormGrid>
       <FormGrid>
+        <SeoInput
+          label="Facebook Domain Verification"
+          value={settings.facebook_domain_verification}
+          onChange={(v) => updateField("facebook_domain_verification", v.trim())}
+          helpText='শুধু content মানটি দিন (পুরো meta-tag নয়)। যেমন: psshow7j8a0vb1naxhhsjfrjkuz7k4'
+        />
+      </FormGrid>
+      <FormGrid>
         <div className="space-y-3 rounded-xl border border-gray-200 p-4">
           <SeoInput label="Google Analytics ID" value={settings.ga4_id} onChange={(v) => updateField("ga4_id", v.toUpperCase())} error={errors.ga4_id} helpText="G-XXXXXXXXXX format." />
           <Toggle {...toggle("ga4_active")} label="Google Analytics active" description={<LinkHint href="https://analytics.google.com/" />} />
