@@ -37,14 +37,20 @@ const getCookie = (name) => {
 };
 
 export const generateFBC = () => {
+  if (typeof window === 'undefined') return null;
   const existing = getCookie('_fbc');
   if (existing) return existing;
-  if (typeof window === 'undefined') return null;
-  const fbclid = new URLSearchParams(window.location.search).get('fbclid');
+  // Extract fbclid EXACTLY as it appears in the URL. Do NOT use
+  // URLSearchParams.get() — it decodes '+' to a space and '%XX' escapes,
+  // which alters the fbclid. Meta flags any modified fbclid in fbc.
+  const m = window.location.search.match(/[?&]fbclid=([^&#]+)/);
+  const fbclid = m ? m[1] : null;
   if (!fbclid) return null;
   const fbc = `fb.1.${Date.now()}.${fbclid}`;
-  document.cookie = `_fbc=${fbc};path=/;max-age=7776000`;
-  localStorage.setItem('fbc', fbc);
+  try {
+    document.cookie = `_fbc=${fbc};path=/;max-age=7776000`;
+    localStorage.setItem('fbc', fbc);
+  } catch { /* storage blocked */ }
   return fbc;
 };
 
