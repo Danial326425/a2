@@ -245,7 +245,9 @@ const PriceSummary = ({ order }) => {
                   <span className="text-gray-600 text-sm">{discount.title}</span>
                 </div>
                 <span className="font-medium text-sm text-red-600">
-                  - ৳{Math.floor(order.product_price * discount.discount_percentage / 100)}
+                  - ৳{discount.discount_type === 'fixed'
+                        ? Math.max(0, Math.floor(order.product_price - Number(discount.fixed_price || 0)))
+                        : Math.floor(order.product_price * discount.discount_percentage / 100)}
                 </span>
               </div>
             ))}

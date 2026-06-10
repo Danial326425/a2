@@ -44,7 +44,7 @@ const ViewProduct = () => {
     category_id: [], clothing: false,
     slug: "", slugEdited: false, seo: { ...emptySeo },
     images: [], colors: [{ color: "", image: null, sizes: [{ size: "" }] }],
-    bulk_discounts: [{ title: "", offer_quantity: "", discount_percentage: "" }],
+    bulk_discounts: [{ title: "", offer_quantity: "", discount_type: "percentage", discount_percentage: "", fixed_price: "", is_highlighted: false }],
     bumps: [{ title: "", bump_price: "", image: null, description: "" }],
     homepage: { headline: "", paragraph: "", description: "" },
     singleProductSizes: [{ size: "" }],
@@ -119,7 +119,11 @@ const ViewProduct = () => {
       })) || [],
       bulk_discounts: product.bulk_discounts?.map(d => ({
         id: d.id || null, title: d.title || "",
-        offer_quantity: d.offer_quantity || "", discount_percentage: d.discount_percentage || "",
+        offer_quantity: d.offer_quantity || "",
+        discount_type: d.discount_type || "percentage",
+        discount_percentage: d.discount_percentage || "",
+        fixed_price: d.fixed_price || "",
+        is_highlighted: !!d.is_highlighted,
       })) || [],
       bumps: product.bumps?.map(b => ({
         id: b.id || null, title: b.title || "",
@@ -263,10 +267,17 @@ const ViewProduct = () => {
       }
       if (showBulkDiscounts) {
         formData.bulk_discounts.forEach((d, i) => {
+          const type = d.discount_type || "percentage";
           if (d.id) data.append(`bulk_discounts[${i}][id]`, d.id);
           data.append(`bulk_discounts[${i}][title]`, d.title || "");
           data.append(`bulk_discounts[${i}][offer_quantity]`, d.offer_quantity || "");
-          data.append(`bulk_discounts[${i}][discount_percentage]`, d.discount_percentage || "");
+          data.append(`bulk_discounts[${i}][discount_type]`, type);
+          data.append(`bulk_discounts[${i}][is_highlighted]`, d.is_highlighted ? "1" : "0");
+          if (type === "fixed") {
+            data.append(`bulk_discounts[${i}][fixed_price]`, d.fixed_price || "");
+          } else {
+            data.append(`bulk_discounts[${i}][discount_percentage]`, d.discount_percentage || "");
+          }
         });
       }
       if (showBumps) {

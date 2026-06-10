@@ -214,7 +214,13 @@ export default function OrderProvider({ children }) {
         ? (() => {
             const found = products.bulk_discounts.find((d) => quantity === d.offer_quantity);
             appliedDiscount = found;
-            return found ? Math.floor((basePrice * found.discount_percentage) / 100) : 0;
+            // 'fixed' → basePrice drops to the fixed bundle price for that qty,
+            // so the discount = basePrice − fixed_price. 'percentage' → % off.
+            if (!found) return 0;
+            if (found.discount_type === 'fixed') {
+              return Math.max(0, Math.floor(basePrice - Number(found.fixed_price || 0)));
+            }
+            return Math.floor((basePrice * Number(found.discount_percentage || 0)) / 100);
           })()
         : 0;
 

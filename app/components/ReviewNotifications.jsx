@@ -27,8 +27,20 @@ function inViewport(el) {
   return r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw;
 }
 
+// True while the user is actively filling a form field (input/textarea/select
+// or a contenteditable). We suppress the toast then so it never lands on top of
+// the order form while someone is typing.
+function isFormFocused() {
+  if (typeof document === 'undefined') return false;
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+}
+
 function isBlocked() {
   if (typeof document === 'undefined') return false;
+  if (isFormFocused()) return true;
   return BLOCK_IDS.some(id => inViewport(document.getElementById(id)));
 }
 
@@ -87,9 +99,12 @@ export default function ReviewNotifications({ productId, apiUrl }) {
     const onScroll = () => { if (isBlocked()) setCurrent(null); };
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
+    // focusin → hide instantly the moment a form field gains focus.
+    document.addEventListener('focusin', onScroll);
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
+      document.removeEventListener('focusin', onScroll);
     };
   }, []);
 

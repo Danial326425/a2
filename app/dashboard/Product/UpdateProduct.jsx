@@ -159,7 +159,7 @@ const UpdateProduct = ({
   const addBulkDiscount = () => {
     setFormData(prev => ({
       ...prev,
-      bulk_discounts: [...(prev.bulk_discounts || []), { title: "", offer_quantity: "", discount_percentage: "" }]
+      bulk_discounts: [...(prev.bulk_discounts || []), { title: "", offer_quantity: "", discount_type: "percentage", discount_percentage: "", fixed_price: "", is_highlighted: false }]
     }));
   };
 
@@ -167,6 +167,17 @@ const UpdateProduct = ({
     const bulk_discounts = [...formData.bulk_discounts];
     bulk_discounts.splice(index, 1);
     setFormData(prev => ({ ...prev, bulk_discounts }));
+  };
+
+  // Highlight is exclusive — turning one tier on turns the others off.
+  const handleBulkHighlight = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      bulk_discounts: (prev.bulk_discounts || []).map((d, i) => ({
+        ...d,
+        is_highlighted: i === index ? !d.is_highlighted : false,
+      })),
+    }));
   };
 
   const handleSizeChange = (colorIndex, sizeIndex, e) => {
@@ -651,7 +662,7 @@ const UpdateProduct = ({
               <h3 className="text-lg font-medium">Bulk Discounts</h3>
               {(formData.bulk_discounts || []).map((discount, index) => (
                 <div key={index} className="border p-3 rounded space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-gray-700 mb-1">Title*</label>
                       <input
@@ -678,20 +689,58 @@ const UpdateProduct = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-gray-700 mb-1">Discount Percentage*</label>
-                      <input
-                        type="number"
-                        name="discount_percentage"
-                        value={discount.discount_percentage}
+                      <label className="block text-gray-700 mb-1">Discount Type*</label>
+                      <select
+                        name="discount_type"
+                        value={discount.discount_type || "percentage"}
                         onChange={(e) => handleBulkDiscountChange(index, e)}
-                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                        placeholder="e.g., 10"
-                        min="1"
-                        max="100"
-                      />
+                        className="w-full p-2 border border-gray-300 rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Fixed Bundle Price (৳)</option>
+                      </select>
                     </div>
+                    {(discount.discount_type || "percentage") === "fixed" ? (
+                      <div>
+                        <label className="block text-gray-700 mb-1">Bundle Price (৳)*</label>
+                        <input
+                          type="number"
+                          name="fixed_price"
+                          value={discount.fixed_price}
+                          onChange={(e) => handleBulkDiscountChange(index, e)}
+                          className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          required
+                          placeholder="e.g., 999"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-gray-700 mb-1">Discount Percentage*</label>
+                        <input
+                          type="number"
+                          name="discount_percentage"
+                          value={discount.discount_percentage}
+                          onChange={(e) => handleBulkDiscountChange(index, e)}
+                          className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          required
+                          placeholder="e.g., 10"
+                          min="1"
+                          max="100"
+                        />
+                      </div>
+                    )}
                   </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!discount.is_highlighted}
+                      onChange={() => handleBulkHighlight(index)}
+                      className="w-4 h-4 accent-amber-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">⭐ এই অফারটি হাইলাইট করুন (সেরা অফার)</span>
+                  </label>
                   {(formData.bulk_discounts || []).length > 1 && (
                     <button
                       type="button"

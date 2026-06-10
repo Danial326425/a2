@@ -653,7 +653,6 @@ const OrderPageClient = ({ slug, initialProduct }) => {
   const [showDescription, setShowDescription] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-   const randomNumber = `HA${Math.floor(1000 + Math.random() * 90000)}`;
    const eventTime = Math.floor(Date.now() / 1000);
 
   // Create API service instance
@@ -675,6 +674,9 @@ const OrderPageClient = ({ slug, initialProduct }) => {
  const [appliedCoupon, setAppliedCoupon] = useState(null);
  // Global order settings (quantity_limit_enabled, global_max_per_order, etc.)
  const [orderSettings, setOrderSettings] = useState(null);
+ // Storefront order-id prefix is admin-configurable (Order Settings). Falls
+ // back to 'HA' until the setting loads / when left unset in the dashboard.
+ const randomNumber = `${orderSettings?.order_id_prefix || 'HA'}${Math.floor(1000 + Math.random() * 90000)}`;
  // Inline submit error (e.g. IP limit 429) — replaces alert() so the message
  // is visible right above the submit button instead of dismissable.
  const [submitError, setSubmitError] = useState(null);
@@ -1017,7 +1019,7 @@ const handleAddToCart = (product) => {
         e.returnValue = '';
         
         try {
-          const randomNumber = `A2C${Math.floor(1000 + Math.random() * 900000)}`;
+          const randomNumber = `${orderSettings?.order_id_prefix || 'A2C'}${Math.floor(1000 + Math.random() * 900000)}`;
           const leadData = {
             order_id: randomNumber,
             product_id: products?.homepage?.product_id || products?.id,
@@ -1862,26 +1864,47 @@ const handleAddToCart = (product) => {
                     {products.bulk_discounts.map((discount, index) => {
                       const isSelected = selectedBulkDiscount?.id === discount.id;
                       const isExactQuantity = quantity === discount.offer_quantity;
-                      
+
+                      // Price math for this tier — show what the customer pays for
+                      // the whole bundle (original struck out) plus per-unit price.
+                      const unitPrice  = products.discount_price ? products.discount_price : products.price;
+                      const origPrice  = Math.round(unitPrice * discount.offer_quantity);
+                      const finalPrice = discount.discount_type === 'fixed'
+                        ? Math.round(Number(discount.fixed_price || 0))
+                        : Math.round(origPrice - (origPrice * Number(discount.discount_percentage || 0)) / 100);
+                      const perUnit    = Math.round(finalPrice / discount.offer_quantity);
+
                       return (
-                        <div 
-                          key={index} 
+                        <div
+                          key={index}
                           onClick={() => handleBulkDiscountSelect(discount)}
-                          className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                            isSelected && isExactQuantity
-                              ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                              : isExactQuantity
-                                ? 'border-green-100 bg-green-50 hover:border-green-300'
-                                : 'border-gray-200 bg-gray-50 opacity-70'
+                          className={`relative overflow-hidden p-3 rounded-lg border cursor-pointer transition-all ${
+                            discount.is_highlighted
+                              ? 'border-amber-400 ring-2 ring-amber-300 bg-amber-50 shadow-md'
+                              : isSelected && isExactQuantity
+                                ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                                : isExactQuantity
+                                  ? 'border-green-100 bg-green-50 hover:border-green-300'
+                                  : 'border-gray-200 bg-gray-50 opacity-70'
                           }`}
                         >
                           <div className="flex justify-between items-center">
                             <div>
-                              <span className={`font-medium ${
+                              {discount.is_highlighted && (
+                                <span className="inline-block mb-1 bg-amber-500 text-white text-[11px] font-bold px-2 py-0.5 rounded">
+                                  ⭐ সেরা অফার
+                                </span>
+                              )}
+                              <span className={`font-medium block ${
                                 isSelected ? 'text-blue-800' : 'text-gray-800'
                               }`}>
                                 {discount.title}
                               </span>
+                              <div className="flex items-baseline gap-2 mt-1">
+                                <span className="text-lg font-bold text-green-700">৳{finalPrice}</span>
+                                <span className="text-xs text-gray-400 line-through">৳{origPrice}</span>
+                                <span className="text-xs text-gray-500">(প্রতিটি ৳{perUnit})</span>
+                              </div>
                               {!isExactQuantity && (
                                 <p className="text-xs text-red-500 mt-1">
                                   {quantity} টি সিলেক্ট করা আছে, প্রয়োজন ঠিক {discount.offer_quantity} টি
@@ -1895,7 +1918,9 @@ const handleAddToCart = (product) => {
                                   ? 'bg-green-100 text-green-800'
                                   : 'bg-gray-100 text-gray-500'
                             }`}>
-                              {discount.discount_percentage}% ছাড়
+                              {discount.discount_type === 'fixed'
+                                ? `৳${Math.max(0, Math.round((products.discount_price ? products.discount_price : products.price) * discount.offer_quantity - Number(discount.fixed_price || 0)))}`
+                                : `${discount.discount_percentage}%`} ছাড়
                             </span>
                           </div>
                           <p className="text-sm text-gray-600 mt-1">
@@ -2172,11 +2197,7 @@ const handleAddToCart = (product) => {
                   <div className="flex justify-between items-center mb-2 text-red-600">
                     <span>({appliedDiscount.title}):</span>
                     <span>
-                      - ৳{
-                        Math.floor(
-                          ((products.discount_price ? products.discount_price : products.price) * quantity * appliedDiscount.discount_percentage) / 100
-                        )
-                      }
+                      - ৳{Math.floor(Number(bulkDiscount || 0))}
                     </span>
                   </div>
                 )}

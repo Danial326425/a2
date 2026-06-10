@@ -95,6 +95,7 @@ const ViewOrderSettings = () => {
     quantity_limit_enabled: false,
     global_max_per_order: "",
     fraud_percentage_limit: "",
+    order_id_prefix: "",
   });
   const [stats, setStats]         = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -127,6 +128,7 @@ const ViewOrderSettings = () => {
           quantity_limit_enabled:    !!d.quantity_limit_enabled,
           global_max_per_order:      d.global_max_per_order ?? "",
           fraud_percentage_limit:    d.fraud_percentage_limit ?? "",
+          order_id_prefix:           d.order_id_prefix ?? "",
         });
         setStats(statsRes.data);
       })
@@ -156,6 +158,7 @@ const ViewOrderSettings = () => {
           quantity_limit_enabled:    settings.quantity_limit_enabled,
           global_max_per_order:      settings.global_max_per_order !== "" ? Number(settings.global_max_per_order) : null,
           fraud_percentage_limit:    settings.fraud_percentage_limit !== "" ? Number(settings.fraud_percentage_limit) : null,
+          order_id_prefix:           settings.order_id_prefix.trim() !== "" ? settings.order_id_prefix.trim().toUpperCase() : null,
         },
         { headers: authHeader }
       );
@@ -262,6 +265,37 @@ const ViewOrderSettings = () => {
                   max="1000"
                 />
               </FormField>
+            )}
+          </div>
+        </SectionCard>
+
+        {/* ── Order ID Prefix ────────────────────────────────── */}
+        <SectionCard>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800 mb-1">Order ID Prefix</h3>
+              <p className="text-xs text-gray-500">
+                অর্ডার আইডির শুরুতে যে অক্ষরগুলো বসবে (যেমন <strong>A2C</strong>1234)। শুধু অক্ষর ও সংখ্যা, সর্বোচ্চ ১০ অক্ষর। খালি রাখলে ডিফল্ট ব্যবহার হবে।
+              </p>
+            </div>
+            <FormField
+              label="Prefix"
+              hint="e.g. A2C, HA, SHOP — অর্ডার আইডি হবে যেমন A2C12345"
+            >
+              <Input
+                type="text"
+                name="order_id_prefix"
+                value={settings.order_id_prefix}
+                onChange={(e) => setSettings(prev => ({ ...prev, order_id_prefix: e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 10) }))}
+                placeholder="e.g. A2C"
+                maxLength={10}
+              />
+            </FormField>
+            {settings.order_id_prefix.trim() !== "" && (
+              <p className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-2">
+                নতুন অর্ডার আইডি দেখতে হবে যেমন:{" "}
+                <strong>{settings.order_id_prefix.trim().toUpperCase()}12345</strong>
+              </p>
             )}
           </div>
         </SectionCard>

@@ -49,7 +49,21 @@ export default function CheckoutPage() {
   const [submitError, setSubmitError]                 = useState(null);
 
   const trackingFired = useRef(false);
-  const orderIdRef    = useRef(`A2C${Math.floor(1000 + Math.random() * 90000)}`);
+  // Numeric part is stable for the page's lifetime; the prefix is admin-set
+  // (Order Settings) and fetched below, falling back to 'A2C' until/unless set.
+  const orderIdSuffixRef = useRef(`${Math.floor(1000 + Math.random() * 90000)}`);
+  const [orderIdPrefix, setOrderIdPrefix] = useState("A2C");
+  const orderIdRef = useRef(`A2C${orderIdSuffixRef.current}`);
+  orderIdRef.current = `${orderIdPrefix || "A2C"}${orderIdSuffixRef.current}`;
+
+  useEffect(() => {
+    let alive = true;
+    axios
+      .get(`${apiUrl}/order-settings`)
+      .then((res) => { if (alive && res.data?.order_id_prefix) setOrderIdPrefix(res.data.order_id_prefix); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [apiUrl]);
 
   /* ── Phone (Bengali → English digits + validation) ────────────────────── */
   const handlePhoneChange = (e) => {

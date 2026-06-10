@@ -117,7 +117,9 @@ const InvoiceTemplate = React.forwardRef(({ order, logoUrl }, ref) => {
           {order.bulk_discounts && order.bulk_discounts.length > 0 && (
             <div className="flex justify-between py-2 border-b text-red-600">
               <span className="font-bold">Combo Discount:</span>
-              <span>-৳{order.bulk_discounts.reduce((sum, discount) => sum + Math.floor(order.product_price * discount.discount_percentage / 100), 0)}</span>
+              <span>-৳{order.bulk_discounts.reduce((sum, discount) => sum + (discount.discount_type === 'fixed'
+                ? Math.max(0, Math.floor(order.product_price - Number(discount.fixed_price || 0)))
+                : Math.floor(order.product_price * discount.discount_percentage / 100)), 0)}</span>
             </div>
           )}
 

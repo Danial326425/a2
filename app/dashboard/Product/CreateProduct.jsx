@@ -24,7 +24,7 @@ const CreateProduct = ({ onProductCreated }) => {
     category_id: [], images: [],
     slug: "", slugEdited: false, seo: { ...emptySeo },
     colors: [{ color: "", image: null, imagePreview: null, sizes: [{ size: "" }] }],
-    bulk_discounts: [{ title: "", offer_quantity: "", discount_percentage: "" }],
+    bulk_discounts: [{ title: "", offer_quantity: "", discount_type: "percentage", discount_percentage: "", fixed_price: "", is_highlighted: false }],
     bumps: [{ bump_price: "", title: "", image: null, description: "" }],
     homepage: { headline: "", paragraph: "", description: "" },
     singleProductSizes: [{ size: "" }],
@@ -216,6 +216,18 @@ const CreateProduct = ({ onProductCreated }) => {
     });
   };
 
+  // Highlight is exclusive — only one tier can be the spotlighted offer, so
+  // toggling one on turns the rest off.
+  const handleBulkHighlight = (idx) => {
+    setFormData(prev => ({
+      ...prev,
+      bulk_discounts: prev.bulk_discounts.map((d, i) => ({
+        ...d,
+        is_highlighted: i === idx ? !d.is_highlighted : false,
+      })),
+    }));
+  };
+
   const handleBumpChange = (idx, e) => {
     const { name, value } = e.target;
     setFormData(prev => {
@@ -289,10 +301,18 @@ const CreateProduct = ({ onProductCreated }) => {
 
     if (showBulkDiscounts) {
       formData.bulk_discounts.forEach((d, i) => {
-        if (d.title && d.offer_quantity && d.discount_percentage) {
+        const type = d.discount_type || "percentage";
+        const hasValue = type === "fixed" ? d.fixed_price : d.discount_percentage;
+        if (d.title && d.offer_quantity && hasValue) {
           data.append(`bulk_discounts[${i}][title]`, d.title);
           data.append(`bulk_discounts[${i}][offer_quantity]`, d.offer_quantity);
-          data.append(`bulk_discounts[${i}][discount_percentage]`, d.discount_percentage);
+          data.append(`bulk_discounts[${i}][discount_type]`, type);
+          data.append(`bulk_discounts[${i}][is_highlighted]`, d.is_highlighted ? "1" : "0");
+          if (type === "fixed") {
+            data.append(`bulk_discounts[${i}][fixed_price]`, d.fixed_price);
+          } else {
+            data.append(`bulk_discounts[${i}][discount_percentage]`, d.discount_percentage);
+          }
         }
       });
     }
@@ -691,7 +711,7 @@ const CreateProduct = ({ onProductCreated }) => {
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Bulk Discounts</p>
               <ActionBtn type="button" variant="secondary" size="sm" icon={Plus}
-                onClick={() => setFormData(p => ({ ...p, bulk_discounts: [...p.bulk_discounts, { title: "", offer_quantity: "", discount_percentage: "" }] }))}>
+                onClick={() => setFormData(p => ({ ...p, bulk_discounts: [...p.bulk_discounts, { title: "", offer_quantity: "", discount_type: "percentage", discount_percentage: "", fixed_price: "", is_highlighted: false }] }))}>
                 Add Discount
               </ActionBtn>
             </div>
@@ -700,17 +720,38 @@ const CreateProduct = ({ onProductCreated }) => {
                 <RepeatableItem key={i} index={i}
                   onRemove={() => setFormData(p => ({ ...p, bulk_discounts: p.bulk_discounts.filter((_, idx) => idx !== i) }))}
                   canRemove={formData.bulk_discounts.length > 1}>
-                  <FormGrid cols={3}>
+                  <FormGrid cols={2}>
                     <FormField label="Title" required>
                       <Input name="title" value={d.title} onChange={e => handleBulkChange(i, e)} placeholder="e.g. Buy 3 Save 10%" required />
                     </FormField>
                     <FormField label="Qty Required" required>
                       <Input type="number" name="offer_quantity" value={d.offer_quantity} onChange={e => handleBulkChange(i, e)} placeholder="e.g. 3" min="1" required />
                     </FormField>
-                    <FormField label="Discount %" required>
-                      <Input type="number" name="discount_percentage" value={d.discount_percentage} onChange={e => handleBulkChange(i, e)} placeholder="e.g. 10" min="1" max="100" required />
+                    <FormField label="Discount Type" required>
+                      <Select name="discount_type" value={d.discount_type || "percentage"} onChange={e => handleBulkChange(i, e)}>
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Fixed Bundle Price (৳)</option>
+                      </Select>
                     </FormField>
+                    {(d.discount_type || "percentage") === "fixed" ? (
+                      <FormField label="Bundle Price (৳)" required>
+                        <Input type="number" name="fixed_price" value={d.fixed_price} onChange={e => handleBulkChange(i, e)} placeholder="e.g. 999" min="0" step="0.01" required />
+                      </FormField>
+                    ) : (
+                      <FormField label="Discount %" required>
+                        <Input type="number" name="discount_percentage" value={d.discount_percentage} onChange={e => handleBulkChange(i, e)} placeholder="e.g. 10" min="1" max="100" required />
+                      </FormField>
+                    )}
                   </FormGrid>
+                  <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!d.is_highlighted}
+                      onChange={() => handleBulkHighlight(i)}
+                      className="w-4 h-4 accent-amber-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">⭐ এই অফারটি হাইলাইট করুন (সেরা অফার)</span>
+                  </label>
                 </RepeatableItem>
               ))}
             </div>

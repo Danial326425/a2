@@ -273,7 +273,9 @@ const CustomerRow = ({
               {app.bulk_discounts.map((discount, index) => (
                 <div key={index} className="flex items-center">
                   <FaMinusCircle className="text-red-500 text-xs mr-1" />
-                  <span> -৳{Math.floor(app.product_price * discount.discount_percentage / 100)}</span>
+                  <span> -৳{discount.discount_type === 'fixed'
+                          ? Math.max(0, Math.floor(app.product_price - Number(discount.fixed_price || 0)))
+                          : Math.floor(app.product_price * discount.discount_percentage / 100)}</span>
                 </div>
               ))}
             </div>

@@ -149,7 +149,11 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
   const [error, setError]                           = useState(null);
   const [data, setData]                             = useState(null);
   const { slug }                                    = useParams();
-  const [orderId]                                   = useState(`HA${Math.floor(1000 + Math.random() * 90000)}`);
+  // Keep the numeric suffix stable for the page's lifetime; the prefix is
+  // admin-configurable (Order Settings) and applied once it loads, falling back
+  // to 'HA' until then / when unset. Derived so a late-loading prefix updates it.
+  const [orderIdSuffix]                             = useState(() => `${Math.floor(1000 + Math.random() * 90000)}`);
+  const orderId                                     = `${orderSettings?.order_id_prefix || 'HA'}${orderIdSuffix}`;
   const [isSubmitting, setIsSubmitting]             = useState(false);
   const [divisions, setDivisions]                   = useState([]);
   const [districts, setDistricts]                   = useState([]);
@@ -173,7 +177,12 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
 
   const bulkDiscountAmount = useMemo(() => {
     if (selectedBulkDiscount && qty === selectedBulkDiscount.offer_quantity) {
-      return Math.round((price * qty * selectedBulkDiscount.discount_percentage) / 100);
+      // 'fixed' → flat bundle price for this qty (discount = list − fixed_price);
+      // 'percentage' → % off the line total.
+      if (selectedBulkDiscount.discount_type === 'fixed') {
+        return Math.max(0, Math.round(price * qty - Number(selectedBulkDiscount.fixed_price || 0)));
+      }
+      return Math.round((price * qty * Number(selectedBulkDiscount.discount_percentage || 0)) / 100);
     }
     return 0;
   }, [price, qty, selectedBulkDiscount]);
@@ -873,7 +882,13 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
                     <div className="space-y-3">
                       {data.product.bulk_discounts.map(d => {
                         const sel = selectedBulkDiscount?.id === d.id;
-                        const savings = Math.round((price * d.offer_quantity * d.discount_percentage) / 100);
+                        const isFixed = d.discount_type === 'fixed';
+                        const origPrice = Math.round(price * d.offer_quantity);
+                        const finalPrice = isFixed
+                          ? Math.round(Number(d.fixed_price || 0))
+                          : Math.round(origPrice - (origPrice * Number(d.discount_percentage || 0)) / 100);
+                        const perUnit = Math.round(finalPrice / d.offer_quantity);
+                        const savings = Math.max(0, origPrice - finalPrice);
                         return (
                           <button
                             key={d.id}
@@ -883,7 +898,9 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
                               "w-full p-4 rounded-xl border-2 text-left transition-all duration-300 relative overflow-hidden",
                               sel
                                 ? "border-blue-500 bg-white shadow-lg transform scale-[1.02]"
-                                : "border-blue-100 bg-white/80 hover:border-blue-300 hover:bg-white hover:shadow-md"
+                                : d.is_highlighted
+                                  ? "border-amber-400 bg-amber-50/60 shadow-md hover:shadow-lg"
+                                  : "border-blue-100 bg-white/80 hover:border-blue-300 hover:bg-white hover:shadow-md"
                             )}
                           >
                             {/* Selected indicator */}
@@ -895,9 +912,19 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
 
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">
+                                {d.is_highlighted && (
+                                  <span className="inline-block mb-1 bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded">
+                                    ⭐ সেরা অফার
+                                  </span>
+                                )}
                                 <p className={cls("text-base font-bold leading-snug", sel ? "text-blue-700" : "text-gray-800")}>
                                   {d.title}
                                 </p>
+                                <div className="flex items-baseline gap-2 mt-1">
+                                  <span className="text-xl font-black text-green-700">৳{finalPrice}</span>
+                                  <span className="text-sm text-gray-400 line-through">৳{origPrice}</span>
+                                  <span className="text-xs text-gray-500">(প্রতিটি ৳{perUnit})</span>
+                                </div>
                                 <div className="flex items-center gap-3 mt-2">
                                   <span className="inline-flex items-center gap-1 text-sm text-gray-600">
                                     <Package size={14} className="text-gray-400" />
@@ -911,7 +938,7 @@ const CheckoutSection = ({ isModal = false, noVariants = false, onClose }) => {
                               </div>
                               <div className="flex flex-col items-end gap-1">
                                 <span className={cls("text-lg font-black px-3 py-1 rounded-lg", sel ? "bg-blue-500 text-white" : "bg-green-100 text-green-700")}>
-                                  {d.discount_percentage}% ছাড়
+                                  {isFixed ? `৳${savings} ছাড়` : `${d.discount_percentage}% ছাড়`}
                                 </span>
                                 {sel && qty === d.offer_quantity && (
                                   <span className="text-xs text-blue-600 font-bold flex items-center gap-1">
