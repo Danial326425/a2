@@ -1283,6 +1283,19 @@ const UpdateProduct = ({
                 <span className="text-sm font-medium text-purple-800">{formData.reviews_enabled ? "Active" : "Inactive"}</span>
               </label>
             </div>
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-purple-200">
+              <div>
+                <h3 className="text-sm font-bold text-purple-800 flex items-center gap-2">🔔 Review Toast (Floating)</h3>
+                <p className="text-xs text-purple-600 mt-0.5">অর্ডার পেজে ভেসে ওঠা রিভিউ পপ-আপ। রিভিউ চালু থেকে আলাদা — আলাদাভাবে চালু করতে হবে।</p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox"
+                  checked={!!(formData.review_toast_enabled)}
+                  onChange={e => setFormData(p => ({ ...p, review_toast_enabled: e.target.checked }))}
+                  className="w-4 h-4 accent-purple-600" />
+                <span className="text-sm font-medium text-purple-800">{formData.review_toast_enabled ? "Active" : "Inactive"}</span>
+              </label>
+            </div>
           </div>
 
           <ProductSeoSection

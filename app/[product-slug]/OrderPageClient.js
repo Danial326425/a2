@@ -2394,10 +2394,13 @@ const handleAddToCart = (product) => {
 
         {/* ── Reviews Section ──────────────────────────────────────────────── */}
         {products?.id && products?.reviews_enabled && (
-          <>
-            <ReviewsSection productId={products.id} apiUrl={apiUrl} />
-            <ReviewNotifications productId={products.id} apiUrl={apiUrl} />
-          </>
+          <ReviewsSection productId={products.id} apiUrl={apiUrl} />
+        )}
+
+        {/* Floating review toast — independent toggle so enabling reviews alone
+            does NOT start the toast. */}
+        {products?.id && products?.review_toast_enabled && (
+          <ReviewNotifications productId={products.id} apiUrl={apiUrl} />
         )}
 
         <Suspense fallback={<div>Loading related products...</div>}>

@@ -145,6 +145,7 @@ const ViewProduct = () => {
       remove_size_guide_image: "",
       guarantee_badge:  product.guarantee_badge ?? { enabled: false, icon: "🛡️", text: "", bg_color: "#f0fdf4", text_color: "#166534" },
       reviews_enabled:  !!product.reviews_enabled,
+      review_toast_enabled: !!product.review_toast_enabled,
       seo: {
         ...emptySeo,
         ...(product.seo || {}),
@@ -259,6 +260,7 @@ const ViewProduct = () => {
         data.append("guarantee_badge", JSON.stringify(formData.guarantee_badge));
       }
       data.append("reviews_enabled", formData.reviews_enabled ? "1" : "0");
+      data.append("review_toast_enabled", formData.review_toast_enabled ? "1" : "0");
 
       if (showHomepageFields) {
         data.append("homepage[headline]", formData.homepage.headline || "");

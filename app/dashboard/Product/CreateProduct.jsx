@@ -38,6 +38,7 @@ const CreateProduct = ({ onProductCreated }) => {
     size_guide_enabled: false,
     guarantee_badge: { enabled: false, icon: "🛡️", text: "", bg_color: "#f0fdf4", text_color: "#166534" },
     reviews_enabled: false,
+    review_toast_enabled: false,
   });
 
   const [categories, setCategories]             = useState([]);
@@ -292,6 +293,7 @@ const CreateProduct = ({ onProductCreated }) => {
     if (formData.size_guide_image_file instanceof File) data.append("size_guide_image", formData.size_guide_image_file);
     if (formData.guarantee_badge) data.append("guarantee_badge", JSON.stringify(formData.guarantee_badge));
     data.append("reviews_enabled", formData.reviews_enabled ? "1" : "0");
+    data.append("review_toast_enabled", formData.review_toast_enabled ? "1" : "0");
 
     if (showHomepage) {
       data.append("homepage[headline]", formData.homepage.headline);
@@ -1014,6 +1016,19 @@ const CreateProduct = ({ onProductCreated }) => {
                 onChange={e => setFormData(p => ({ ...p, reviews_enabled: e.target.checked }))}
                 className="w-4 h-4 accent-purple-600" />
               <span className="text-sm font-medium text-gray-700">{formData.reviews_enabled ? "Active" : "Inactive"}</span>
+            </label>
+          </div>
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">🔔 Review Toast (Floating)</p>
+              <p className="text-xs text-gray-500 mt-1">অর্ডার পেজে ভেসে ওঠা রিভিউ পপ-আপ। রিভিউ চালু থেকে আলাদা — আলাদাভাবে চালু করতে হবে।</p>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox"
+                checked={!!(formData.review_toast_enabled)}
+                onChange={e => setFormData(p => ({ ...p, review_toast_enabled: e.target.checked }))}
+                className="w-4 h-4 accent-purple-600" />
+              <span className="text-sm font-medium text-gray-700">{formData.review_toast_enabled ? "Active" : "Inactive"}</span>
             </label>
           </div>
         </SectionCard>
