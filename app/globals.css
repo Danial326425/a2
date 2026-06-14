@@ -66,11 +66,25 @@ body {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   overflow-x: hidden;
+  overflow-y: auto;       /* লেখা বেশি হলে বক্সের ভেতরেই স্ক্রল হবে, বাইরে যাবে না */
   min-height: 120px;
+}
+
+/* react-quill-new রুট এলিমেন্টের ক্লাস `.quill`; height ইনলাইন স্টাইলে রুটে বসে।
+   Quill-এর ডিফল্ট CSS-এ `.ql-container { height:100% }` — মানে কন্টেইনার রুটের
+   পুরো উচ্চতা নেয়, আর টুলবার তার উপরে বসে; ফলে টুলবার + কন্টেইনার মিলে রুটের
+   নির্ধারিত উচ্চতা ছাড়িয়ে লেখা বক্সের বাইরে চলে যায়। রুটকে flex-column করে
+   কন্টেইনারকে flex:1 দিলে কন্টেইনার শুধু *বাকি* জায়গাটুকু নেয়, আর এডিটর সেই
+   সীমার ভেতরেই স্ক্রল করে। */
+.quill {
+  display: flex;
+  flex-direction: column;
 }
 
 .ql-container {
   overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Quill toolbar full-width so it doesn't overflow on small screens */
@@ -79,6 +93,90 @@ body {
   width: 100%;
   box-sizing: border-box;
 }
+
+/* Quill সাইজ ড্রপডাউন: snow থিম ডিফল্টে শুধু small/large/huge চেনে, বাকি কাস্টম
+   px ভ্যালুগুলো "Normal" দেখাত। নিচের রুলে প্রতিটি px ভ্যালু তার নিজের লেবেল
+   (যেমন 24px) হিসেবে দেখায়; ভ্যালুবিহীন আইটেমটি আগের মতোই "Normal" থাকে। */
+.ql-snow .ql-picker.ql-size {
+  width: auto;
+  min-width: 64px;
+}
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value]::before {
+  content: attr(data-value);
+}
+
+/* ── Storefront rendering of Quill description HTML ───────────────────────────
+   স্টোরফ্রন্টে @tailwindcss/typography (prose) ইনস্টল করা নেই এবং Tailwind-এর
+   reset হেডিং/প্যারাগ্রাফের ডিফল্ট স্টাইল মুছে দেয়, ফলে ড্যাশবোর্ড এডিটরে করা
+   ডিজাইন (h1/h2, লাইনের ফাঁকা, লিস্ট, কোট ইত্যাদি) অর্ডার পেজে হারিয়ে যেত।
+   নিচের `.rte-content` ক্লাসটি Quill এডিটরের (.ql-editor) কন্টেন্ট-স্টাইল হুবহু
+   প্রতিফলিত করে, যাতে এডিটরে যা দেখা যায় অর্ডার পেজেও ঠিক তা-ই দেখায়। */
+.rte-content {
+  line-height: 1.42;
+  white-space: pre-wrap;           /* এডিটরের মতো খালি লাইন/স্পেস ধরে রাখে */
+  /* word-break/anywhere ব্যবহার করলে ব্রাউজার শব্দের মাঝখানে যেকোনো অক্ষরে
+     ভেঙে ফেলত (যেমন "পোশাক" → "পোশা" + "ক")। break-word শুধু তখনই ভাঙে যখন
+     একটি শব্দ একা একটি লাইনেও আঁটে না, তাই সাধারণ বাংলা শব্দ অক্ষত থাকে। */
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+.rte-content h1,
+.rte-content h2,
+.rte-content h3,
+.rte-content h4,
+.rte-content h5,
+.rte-content h6 {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.42;
+}
+.rte-content h1 { font-size: 2em; }
+.rte-content h2 { font-size: 1.5em; }
+.rte-content h3 { font-size: 1.17em; }
+.rte-content h4 { font-size: 1em; }
+.rte-content h5 { font-size: 0.83em; }
+.rte-content h6 { font-size: 0.67em; }
+.rte-content p { margin: 0; }
+/* Quill খালি লাইনকে <p></p> (br ছাড়া) হিসেবে সেভ করে; margin:0 হওয়ায় সেটি
+   শূন্য-উচ্চতায় মিশে যেত আর অর্ডার পেজে ফাঁকা লাইন দেখা যেত না। খালি ব্লককে এক
+   লাইন উচ্চতা দিলে এডিটরের মতোই ফাঁকা জায়গা ফিরে আসে। */
+.rte-content p:empty,
+.rte-content h1:empty,
+.rte-content h2:empty,
+.rte-content h3:empty,
+.rte-content h4:empty,
+.rte-content h5:empty,
+.rte-content h6:empty {
+  min-height: 1.42em;
+}
+.rte-content strong, .rte-content b { font-weight: 700; }
+.rte-content em, .rte-content i { font-style: italic; }
+.rte-content u { text-decoration: underline; }
+.rte-content s { text-decoration: line-through; }
+.rte-content a { color: #2563eb; text-decoration: underline; }
+.rte-content blockquote {
+  border-left: 4px solid #ccc;
+  margin: 5px 0;
+  padding-left: 16px;
+}
+.rte-content ol,
+.rte-content ul {
+  margin: 0;
+  padding-left: 1.5em;
+}
+.rte-content ol { list-style-type: decimal; }
+.rte-content ul { list-style-type: disc; }
+/* react-quill-new প্রতিটি লিস্টকে <ol> হিসেবেই আউটপুট করে, bullet/ordered আলাদা
+   করে `data-list` দিয়ে — তাই মার্কারটা data-list অনুযায়ী ঠিক করি। */
+.rte-content ol > li[data-list="bullet"] { list-style-type: disc; }
+.rte-content ol > li[data-list="ordered"] { list-style-type: decimal; }
+.rte-content li { list-style-position: outside; }
+.rte-content .ql-indent-1 { margin-left: 1.5em; }
+.rte-content .ql-indent-2 { margin-left: 3em; }
+.rte-content .ql-indent-3 { margin-left: 4.5em; }
+.rte-content .ql-indent-4 { margin-left: 6em; }
+.rte-content img { max-width: 100%; height: auto; }
 
 button:not(:disabled),
 [role="button"]:not(:disabled),

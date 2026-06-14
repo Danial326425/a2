@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
-import { Settings2, RefreshCw, ShieldAlert, Truck } from "lucide-react";
+import { Settings2, RefreshCw, ShieldAlert, Truck, MessageCircle } from "lucide-react";
 import { config } from "../../../config";
 import {
   PageHeader, SectionCard, FormField, Input, Toggle, ActionBtn, ErrorBanner,
@@ -96,6 +96,8 @@ const ViewOrderSettings = () => {
     global_max_per_order: "",
     fraud_percentage_limit: "",
     order_id_prefix: "",
+    whatsapp_enabled: false,
+    whatsapp_number: "",
   });
   const [stats, setStats]         = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -129,6 +131,8 @@ const ViewOrderSettings = () => {
           global_max_per_order:      d.global_max_per_order ?? "",
           fraud_percentage_limit:    d.fraud_percentage_limit ?? "",
           order_id_prefix:           d.order_id_prefix ?? "",
+          whatsapp_enabled:          !!d.whatsapp_enabled,
+          whatsapp_number:           d.whatsapp_number ?? "",
         });
         setStats(statsRes.data);
       })
@@ -159,6 +163,8 @@ const ViewOrderSettings = () => {
           global_max_per_order:      settings.global_max_per_order !== "" ? Number(settings.global_max_per_order) : null,
           fraud_percentage_limit:    settings.fraud_percentage_limit !== "" ? Number(settings.fraud_percentage_limit) : null,
           order_id_prefix:           settings.order_id_prefix.trim() !== "" ? settings.order_id_prefix.trim().toUpperCase() : null,
+          whatsapp_enabled:          settings.whatsapp_enabled,
+          whatsapp_number:           settings.whatsapp_number.replace(/\D/g, "") !== "" ? settings.whatsapp_number.replace(/\D/g, "") : null,
         },
         { headers: authHeader }
       );
@@ -295,6 +301,49 @@ const ViewOrderSettings = () => {
               <p className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded px-3 py-2">
                 নতুন অর্ডার আইডি দেখতে হবে যেমন:{" "}
                 <strong>{settings.order_id_prefix.trim().toUpperCase()}12345</strong>
+              </p>
+            )}
+          </div>
+        </SectionCard>
+
+        {/* ── WhatsApp Order ─────────────────────────────────── */}
+        <SectionCard>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-green-500" />
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800 mb-1">WhatsApp Order Button</h3>
+                <p className="text-xs text-gray-500">
+                  অর্ডার পেজে একটি WhatsApp বাটন দেখাবে যেটাতে ক্লিক করে কাস্টমার সরাসরি WhatsApp-এ অর্ডার করতে পারবে।
+                </p>
+              </div>
+            </div>
+            <Toggle
+              id="whatsapp_enabled"
+              name="whatsapp_enabled"
+              checked={settings.whatsapp_enabled}
+              onChange={() => handleToggle("whatsapp_enabled")}
+              label="Enable WhatsApp order button"
+              description="অর্ডার পেজে কার্টে যোগ করুন ও অর্ডার করুন বাটনের নিচে WhatsApp বাটন দেখাবে"
+            />
+            {settings.whatsapp_enabled && (
+              <FormField
+                label="WhatsApp number"
+                hint="দেশের কোডসহ লিখুন, যেমন 8801XXXXXXXXX (বা 01XXXXXXXXX)"
+              >
+                <Input
+                  type="tel"
+                  name="whatsapp_number"
+                  value={settings.whatsapp_number}
+                  onChange={(e) => setSettings(prev => ({ ...prev, whatsapp_number: e.target.value.replace(/[^0-9+]/g, "") }))}
+                  placeholder="e.g. 8801712345678"
+                  maxLength={20}
+                />
+              </FormField>
+            )}
+            {settings.whatsapp_enabled && settings.whatsapp_number.replace(/\D/g, "") === "" && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded px-3 py-2">
+                WhatsApp বাটন দেখাতে অবশ্যই একটি নম্বর দিন।
               </p>
             )}
           </div>

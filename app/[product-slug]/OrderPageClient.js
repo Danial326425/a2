@@ -8,7 +8,7 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { FaShoppingCart, FaMinus, FaPlus, FaTruck, FaInfoCircle } from 'react-icons/fa';
+import { FaShoppingCart, FaMinus, FaPlus, FaTruck, FaInfoCircle, FaWhatsapp } from 'react-icons/fa';
 import { OrderContext, clearCheckoutDraft } from '../context/OrderContext';
 import axios from 'axios';
 import { HeaderContext } from '../context/HeaderContext';
@@ -650,7 +650,6 @@ const OrderPageClient = ({ slug, initialProduct }) => {
  const { items, totalItems, addItem, updateItemQuantity, removeItem, setItems } = useCart();
 
   const [codAdvance, setCodAdvance] = useState('');
-  const [showDescription, setShowDescription] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
    const eventTime = Math.floor(Date.now() / 1000);
@@ -726,6 +725,24 @@ const OrderPageClient = ({ slug, initialProduct }) => {
     ? 'কুপন'
     : (productFreeShip ? 'Bulk Purchase' : (categoryFreeShip ? 'Category Free' : null));
   const isFreeDelivery = !!freeShipReason;
+
+  // Quill খালি থাকলেও "<p><br></p>" এর মতো মার্কআপ থেকে যায়, তাই description
+  // truthy হলেও আসলে কোনো কন্টেন্ট নাও থাকতে পারে। ট্যাগ বাদ দিয়ে আসল টেক্সট
+  // আছে কিনা (বা ছবি/ভিডিও) যাচাই করি — তবেই বিবরণ সেকশন দেখাই।
+  const descriptionHasContent = useMemo(() => {
+    const html = homepage?.description || '';
+    if (/<(img|video|iframe)\b/i.test(html)) return true;
+    return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim().length > 0;
+  }, [homepage?.description]);
+
+  // ড্যাশবোর্ডের লেখায় প্রতিটি শব্দের ফাঁকে non-breaking space (&nbsp; / U+00A0)
+  // থাকায় ব্রাউজার পুরো বাক্যকে একটিই শব্দ ধরে নেয় এবং জায়গা না হলে শব্দের
+  // মাঝখানে ভেঙে ফেলত (যেমন "পোশাক" → "পোশা" + "ক")। রেন্ডারের আগে এগুলোকে সাধারণ
+  // স্পেসে বদলে দিলে শব্দের ফাঁকে স্বাভাবিকভাবে লাইন ভাঙে, শব্দ অক্ষত থাকে।
+  const descriptionHtml = useMemo(
+    () => (homepage?.description || '').replace(/&nbsp;/gi, ' ').replace(/ /g, ' '),
+    [homepage?.description]
+  );
 
   // DeliveryCharge component callback — receives (charge, area) where area
   // is the full delivery zone (district_name, delivery_charge, estimated_days,
@@ -896,6 +913,36 @@ const handleAddToCart = (product) => {
   // কার্ট প্যানেল খুলুন
   setIsCartOpen(true);
 
+};
+
+// WhatsApp অর্ডার — দোকানের নম্বরে প্রোডাক্ট ডিটেইলসহ একটি প্রি-ফিলড মেসেজ পাঠায়।
+// নম্বরটি wa.me ফরম্যাটে (international, + ছাড়া) রূপান্তর করা হয়।
+const whatsappEnabled = !!orderSettings?.whatsapp_enabled && !!orderSettings?.whatsapp_number;
+
+const handleWhatsappOrder = () => {
+  const raw = String(orderSettings?.whatsapp_number || '').replace(/\D/g, '');
+  if (!raw) return;
+  // বাংলাদেশি লোকাল নম্বর (01XXXXXXXXX) → 8801XXXXXXXXX
+  const waNumber = raw.startsWith('880') ? raw : (raw.startsWith('0') ? `880${raw.slice(1)}` : raw);
+
+  const lines = [
+    'আসসালামু আলাইকুম, আমি অর্ডার করতে চাই।',
+    '',
+    `🛍️ প্রোডাক্ট: ${products?.name || ''}`,
+  ];
+  if (selectedColor) lines.push(`🎨 কালার: ${selectedColor}`);
+  if (selectedSize)  lines.push(`📏 সাইজ: ${selectedSize}`);
+  lines.push(`🔢 পরিমাণ: ${quantity}`);
+  lines.push(`💰 মোট: ৳${Math.round(totalPrice)}`);
+  lines.push('');
+  lines.push(`🔗 ${typeof window !== 'undefined' ? window.location.href : ''}`);
+
+  const url = `https://wa.me/${waNumber}?text=${encodeURIComponent(lines.join('\n'))}`;
+
+  // InitiateCheckout ট্র্যাকিং
+  fireInitiateCheckout();
+
+  window.open(url, '_blank', 'noopener,noreferrer');
 };
 
   // Hydrate from SSR if the server delivered the product; otherwise fall back
@@ -1646,14 +1693,9 @@ const handleAddToCart = (product) => {
             {homepage?.description && (
               <div className="w-full hidden lg:block mt-8 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
                 <div className="p-6 sm:p-8">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-                    <FaInfoCircle className="mr-2 text-blue-500" />
-                    {products.name} সম্পর্কে
-                  </h2>
-                  <div 
-                    className="prose max-w-none text-gray-700 break-words overflow-hidden"
-                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
-                    dangerouslySetInnerHTML={{ __html: homepage.description }}
+                  <div
+                    className="rte-content text-gray-700 overflow-hidden"
+                    dangerouslySetInnerHTML={{ __html: descriptionHtml }}
                   />
                 </div>
               </div>
@@ -1723,54 +1765,6 @@ const handleAddToCart = (product) => {
                 </div>
               )}
 
-              {/* Mobile Description - Expandable */}
-              {homepage?.description && (
-                <div className="lg:hidden mb-6 bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-                  <div 
-                    className="p-4 flex justify-between items-center cursor-pointer bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all duration-200"
-                    onClick={() => setShowDescription(!showDescription)}
-                  >
-                    <div className="flex items-center">
-                      <div className="bg-blue-100 p-2 rounded-lg mr-3">
-                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-800">পণ্যের বিবরণ</h3>
-                        <p className="text-sm text-gray-500 mt-1">ক্লিক করে সম্পূর্ণ বিবরণ দেখুন</p>
-                      </div>
-                    </div>
-                    <div className={`transform transition-transform duration-300 ${showDescription ? 'rotate-180' : ''}`}>
-                      <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path>
-                      </svg>
-                    </div>
-                  </div>
-                  
-                  {showDescription && (
-                    <div className="px-4 py-4 bg-white border-t border-gray-100 animate-fadeIn">
-                      <div 
-                        className="prose prose-sm max-w-none text-gray-700 break-words overflow-hidden"
-                        style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
-                        dangerouslySetInnerHTML={{ __html: homepage.description }} 
-                      />
-                      <div className="mt-4 pt-4 border-t border-gray-100 flex justify-center">
-                        <button 
-                          onClick={() => setShowDescription(false)}
-                          className="flex items-center text-blue-600 text-sm font-medium"
-                        >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7"></path>
-                          </svg>
-                          বিবরণ বন্ধ করুন
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-                        
               <form onSubmit={handleSubmit}>
                 {/* Size Selection */}
                 {products?.colors?.length > 0 && products.colors.some(color => color.sizes && color.sizes.length > 0) && (
@@ -2016,6 +2010,20 @@ const handleAddToCart = (product) => {
                 অর্ডার করুন
               </MotionButton>}
             </div>
+
+            {/* WhatsApp অর্ডার বাটন — ড্যাশবোর্ড থেকে চালু করা থাকলে দেখাবে */}
+            {whatsappEnabled && (
+              <button
+                type="button"
+                onClick={handleWhatsappOrder}
+                className="mb-4 w-full bg-[#25D366] hover:bg-[#1ebe5d] text-white py-2 rounded-md
+                          font-semibold text-sm md:text-lg flex items-center justify-center gap-2
+                          transition-colors shadow-md hover:shadow-lg"
+              >
+                <FaWhatsapp className="text-lg" />
+                WhatsApp এ অর্ডার করুন
+              </button>
+            )}
 
                 {/* Customer Info */}
                 {showForm && <div className="space-y-6">
@@ -2391,6 +2399,17 @@ const handleAddToCart = (product) => {
           removeFromCart={removeItem}
           updateQuantity={updateItemQuantity}
         />
+
+        {/* Mobile Product Description — Ratings & Reviews এর ঠিক উপরে।
+            লেখা/কন্টেন্ট থাকলেই দেখাবে; কোনো বর্ডার, কার্ড বা হেডিং নেই। */}
+        {descriptionHasContent && (
+          <div className="lg:hidden mt-8 max-w-2xl mx-auto px-4">
+            <div
+              className="rte-content text-gray-700 overflow-hidden"
+              dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+            />
+          </div>
+        )}
 
         {/* ── Reviews Section ──────────────────────────────────────────────── */}
         {products?.id && products?.reviews_enabled && (
