@@ -1,62 +1,76 @@
 'use client';
 
-import React from 'react';
+// Lightweight banner slider (no react-slick) so the FIRST banner is a proper
+// LCP candidate: rendered in the SSR HTML, eager, with fetchpriority=high +
+// preload (via next/image `priority`). react-slick cloned slides and shipped
+// slick.css + slick.woff into the critical path, which delayed LCP.
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import Slider from 'react-slick';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
-import { config } from '@/config/config';
 
 const imageProxyUrl = '/api/storage';
-
-const settings = {
-  dots: true,
-  infinite: true,
-  speed: 500,
-  slidesToShow: 1,
-  slidesToScroll: 1,
-  autoplay: true,
-  autoplaySpeed: 3000,
-  arrows: true,
-  fade: true,
-  cssEase: 'linear',
-  adaptiveHeight: true,
-};
+const AUTOPLAY_MS = 4000;
 
 export default function BannerSlider({ banners }) {
-  if (!banners || banners.length === 0) {
-    return null;
-  }
+  const count = banners?.length || 0;
+  const [active, setActive] = useState(0);
+  const timer = useRef(null);
+
+  const goTo = useCallback((i) => setActive(((i % count) + count) % count), [count]);
+
+  useEffect(() => {
+    if (count <= 1) return undefined;
+    timer.current = setInterval(() => setActive((a) => (a + 1) % count), AUTOPLAY_MS);
+    return () => clearInterval(timer.current);
+  }, [count]);
+
+  if (count === 0) return null;
 
   return (
-    <div className="banner-slider-container w-full relative">
-      <Slider {...settings}>
-        {banners.map((banner) => (
-          <BannerSlide key={banner.id} banner={banner} />
+    <div className="banner-slider-container w-full relative overflow-hidden">
+      {/* aspect ratio reserves space → no CLS while the image decodes */}
+      <div className="relative w-full aspect-[16/5] bg-gray-100">
+        {banners.map((banner, i) => (
+          <div
+            key={banner.id}
+            className={`absolute inset-0 transition-opacity duration-700 ease-linear ${
+              i === active ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+            aria-hidden={i !== active}
+          >
+            <Image
+              src={`${imageProxyUrl}/${banner.image}`}
+              alt={banner.title || 'Banner'}
+              fill
+              className="object-cover"
+              sizes="100vw"
+              // First banner is the LCP image: eager + fetchpriority=high + preload.
+              priority={i === 0}
+            />
+
+            {(banner.title || banner.description || banner.link) && (
+              <BannerOverlay banner={banner} />
+            )}
+          </div>
         ))}
-      </Slider>
-    </div>
-  );
-}
-
-function BannerSlide({ banner }) {
-  return (
-    <div className="banner-slide relative">
-      <div className="banner-image-container relative w-full aspect-[16/5]">
-        <Image
-          src={`${imageProxyUrl}/${banner.image}`}
-          alt={banner.title || 'Banner'}
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-        />
-
-        {(banner.title || banner.description || banner.link) && (
-          <BannerOverlay banner={banner} />
-        )}
       </div>
+
+      {count > 1 && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          {banners.map((banner, i) => (
+            <button
+              key={banner.id}
+              type="button"
+              onClick={() => goTo(i)}
+              aria-label={`Go to slide ${i + 1}`}
+              className={`h-2.5 rounded-full transition-all ${
+                i === active ? 'w-6 bg-white' : 'w-2.5 bg-white/60 hover:bg-white/80'
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
