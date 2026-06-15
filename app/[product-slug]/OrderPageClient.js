@@ -4,8 +4,6 @@ import React, { Suspense, useContext, useEffect, useMemo, useState, useCallback,
 import dynamic from 'next/dynamic';
 import NextImage from 'next/image';
 import { useRouter } from 'next/navigation';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { FaShoppingCart, FaMinus, FaPlus, FaTruck, FaInfoCircle, FaWhatsapp } from 'react-icons/fa';
@@ -22,15 +20,7 @@ import DeliveryCharge from '../components/Landing/DeliveryCharge';
 import CouponBox from '../components/CouponBox';
 
 // Heavy / below-the-fold deps: lazy-loaded so they don't block initial JS.
-// react-slick + framer-motion + CartPanel together ≈ 120KB; keeping them out
-// of the main chunk speeds up TTI on mobile.
-const Slider = dynamic(() => import('react-slick'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full aspect-square bg-gray-100 rounded-lg animate-pulse" />
-  ),
-});
-
+// framer-motion + CartPanel kept out of the main chunk to speed up TTI on mobile.
 const MotionButton = dynamic(
   () => import('framer-motion').then((mod) => mod.motion.button),
   { ssr: false }
@@ -43,16 +33,6 @@ const CartPanel = dynamic(() => import('../components/CartPanel'), {
 // Placeholder components
 const DistrictSelector = () => null;
 const RelatedProducts = dynamic(() => import('../components/OrderPage/RelatedProducts'), { ssr: false });
-
-const sliderSettings = {
-  dots: false,
-  infinite: true,
-  speed: 500,
-  slidesToShow: 1,
-  slidesToScroll: 1,
-  autoplay: true,
-  autoplaySpeed: 3000,
-};
 
 // Custom hooks for API calls and debouncing
 const useApiData = (url, dependencies = []) => {
@@ -241,6 +221,55 @@ const SimpleImageZoom = ({ src, alt, className, style, priority = false, sizes }
         blurDataURL={BLUR_DATA_URL}
         onError={() => setIsError(true)}
       />
+    </div>
+  );
+};
+
+// Lightweight, SSR-friendly product image gallery (replaces react-slick).
+// The active image — index 0 on first render — is a `priority` next/image, so
+// it's in the server HTML and gets preloaded as the LCP candidate. react-slick
+// was ssr:false + cloned slides, so the main image only appeared after the
+// chunk hydrated (LCP ~9.8s) and the placeholder→slider swap caused CLS.
+const ProductImageSlider = ({ images, imageUrl, name }) => {
+  const [active, setActive] = useState(0);
+  const list = Array.isArray(images) ? images : [];
+  const count = list.length;
+  if (count === 0) return null;
+
+  const go = (i) => setActive(((i % count) + count) % count);
+
+  return (
+    <div className="w-full">
+      <div className="relative">
+        <SimpleImageZoom
+          src={list[active]?.image ? `${imageUrl}/${list[active].image}` : null}
+          alt={`${name || 'Product'} - ${active + 1}`}
+          className="w-full rounded-lg cursor-zoom-in"
+          priority={active === 0}
+        />
+
+        {count > 1 && (
+          <>
+            <button type="button" onClick={() => go(active - 1)} aria-label="Previous image"
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center text-xl text-gray-700 hover:bg-white">‹</button>
+            <button type="button" onClick={() => go(active + 1)} aria-label="Next image"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center text-xl text-gray-700 hover:bg-white">›</button>
+          </>
+        )}
+      </div>
+
+      {count > 1 && (
+        <div className="flex gap-2 mt-3 justify-center flex-wrap">
+          {list.map((img, i) => (
+            img?.image ? (
+              <button key={i} type="button" onClick={() => setActive(i)} aria-label={`Image ${i + 1}`}
+                className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-colors ${i === active ? 'border-blue-600' : 'border-gray-200 hover:border-blue-400'}`}>
+                <NextImage src={`${imageUrl}/${img.image}`} alt="" width={56} height={56} className="object-cover w-full h-full" />
+              </button>
+            ) : null
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -596,10 +625,17 @@ const OrderPageClient = ({ slug, initialProduct }) => {
   const { loading: headerLoading } = useContext(HeaderContext);
   const { pixel, testEventCode } = useContext(ProductContext);
 
-  // Debug: Log image state
-  console.log('[OrderPage] currentImage:', currentImage);
-  console.log('[OrderPage] products.colors:', products?.colors);
-  console.log('[OrderPage] products.images:', products?.images);
+  // Render the product image from the SERVER-fetched `initialProduct` on the
+  // first paint — before the client-side OrderContext hydrates — so the LCP
+  // image is in the SSR HTML with priority/preload (no client round-trip, no
+  // layout shift). After hydration `products`/`currentImage` take over for
+  // colour switching + zoom.
+  const displayProduct = products || initialProduct || null;
+  const primaryImage =
+    currentImage ||
+    displayProduct?.colors?.[0]?.image ||
+    displayProduct?.images?.[0]?.image ||
+    null;
 
   const [dataSaved, setDataSaved] = useState(false);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
@@ -1609,40 +1645,32 @@ const handleWhatsappOrder = () => {
             {/* Product Images */}
             <div className="flex flex-col items-center">
               <div className="w-full overflow-hidden p-2">
-                {products?.colors && products.colors.length > 0 ? (
+                {displayProduct?.colors && displayProduct.colors.length > 0 ? (
                   <SimpleImageZoom
-                    src={currentImage ? `${imageUrl}/${currentImage}` : null}
-                    alt={products.name || 'Product'}
+                    src={primaryImage ? `${imageUrl}/${primaryImage}` : null}
+                    alt={displayProduct.name || 'Product'}
                     className="w-full rounded-lg cursor-zoom-in"
                     style={{ maxHeight: '600px' }}
                     priority
                   />
-                ) : products?.images && products.images.length > 0 ? (
+                ) : displayProduct?.images && displayProduct.images.length > 0 ? (
                   <div className="w-full mx-auto">
-                    {products.images.length === 1 ? (
+                    {displayProduct.images.length === 1 ? (
                       <div className="bg-white">
                         <SimpleImageZoom
-                          src={products.images[0]?.image ? `${imageUrl}/${products.images[0].image}` : null}
-                          alt={products.name || 'Product'}
+                          src={displayProduct.images[0]?.image ? `${imageUrl}/${displayProduct.images[0].image}` : null}
+                          alt={displayProduct.name || 'Product'}
                           className="w-full rounded-lg cursor-zoom-in"
                           style={{ maxHeight: '600px' }}
                           priority
                         />
                       </div>
                     ) : (
-                      <Slider {...sliderSettings} className="rounded-xl overflow-hidden">
-                        {products.images.map((image, index) => (
-                          <div key={index} className="flex justify-center bg-white">
-                            <SimpleImageZoom
-                              src={image?.image ? `${imageUrl}/${image.image}` : null}
-                              alt={`${products.name || 'Product'} - Image ${index + 1}`}
-                              className="w-full rounded-sm cursor-zoom-in"
-                              style={{ maxHeight: '600px' }}
-                              priority={index === 0}
-                            />
-                          </div>
-                        ))}
-                      </Slider>
+                      <ProductImageSlider
+                        images={displayProduct.images}
+                        imageUrl={imageUrl}
+                        name={displayProduct.name}
+                      />
                     )}
                   </div>
                 ) : (

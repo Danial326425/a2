@@ -2,6 +2,13 @@
   "name": "safwan",
   "version": "0.1.0",
   "private": true,
+  "browserslist": [
+    "chrome >= 91",
+    "edge >= 91",
+    "firefox >= 90",
+    "safari >= 15.4",
+    "not dead"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
