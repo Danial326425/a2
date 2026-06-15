@@ -72,6 +72,7 @@ const ViewReviews         = dynamic(() => import("./Reviews/ViewReviews"),      
 const InventoryOverview   = dynamic(() => import("./Inventory/InventoryOverview"), { ssr: false });
 const StockReport         = dynamic(() => import("./Inventory/StockReport"),       { ssr: false });
 const AdsPerformance      = dynamic(() => import("./AdsPerformance/AdsPerformance"), { ssr: false });
+const Messaging           = dynamic(() => import("./Messaging/Messaging"), { ssr: false });
 
 
 const Dashboard = () => {
@@ -159,7 +160,8 @@ const Dashboard = () => {
         "createCoupon", "couponOverview", "createCartReward", "cartRewardOverview",
         "reviewsOverview",
         "inventoryOverview", "stockReport",
-        "adsPerformance"
+        "adsPerformance",
+        "messaging"
       ],
       moderator: [
         // Moderator specific access
@@ -288,6 +290,8 @@ const Dashboard = () => {
         return <OwnTracking />;
       case "adsPerformance":
         return <AdsPerformance />;
+      case "messaging":
+        return <Messaging />;
       case "seoSettings":
         return <SeoSettingsPage />;
 

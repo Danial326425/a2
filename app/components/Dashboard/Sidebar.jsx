@@ -41,6 +41,7 @@ import {
   X,
   MenuIcon,
   Search,
+  MessageCircle,
 } from "lucide-react";
 import axios from "axios";
 import { config } from "@/config/config";
@@ -228,6 +229,12 @@ const MENU_GROUPS = [
         icon: Search,
         key: "seo",
         directItem: "seoSettings",
+      },
+      {
+        title: "WhatsApp Messaging",
+        icon: MessageCircle,
+        key: "messaging",
+        directItem: "messaging",
       },
     ],
   },
@@ -421,6 +428,7 @@ const ROLE_ACCESS = {
     ownTracking: ["trackingOverview"],
     adsPerformance: ["adsPerformance"],
     seo: ["seoSettings"],
+    messaging: ["messaging"],
     coupons: { couponsSub: ["createCoupon", "couponOverview"] },
     cartRewards: { cartRewardsSub: ["createCartReward", "cartRewardOverview"] },
     steadfast: { steadfastSub: ["createSteadfast", "steadfastOverview"] },

@@ -1,5 +1,6 @@
 // UpdateCustomer.jsx
 import React from "react";
+import OrderMessagingPanel from "./Component/OrderMessagingPanel";
 
 const UpdateCustomer = ({ 
   formData, 
@@ -158,6 +159,11 @@ const UpdateCustomer = ({
               placeholder="Enter Delivery Note"
             />
           </div>
+
+          {/* WhatsApp marketing opt-in + baby birth month (collected by phone). */}
+          {formData.phone_number && (
+            <OrderMessagingPanel phone={formData.phone_number} />
+          )}
 
           <div className="md:col-span-2 flex justify-end space-x-3 pt-4">
             <button
