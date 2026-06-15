@@ -98,6 +98,7 @@ const ViewOrderSettings = () => {
     order_id_prefix: "",
     whatsapp_enabled: false,
     whatsapp_number: "",
+    tracking_days: "",
   });
   const [stats, setStats]         = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -133,6 +134,7 @@ const ViewOrderSettings = () => {
           order_id_prefix:           d.order_id_prefix ?? "",
           whatsapp_enabled:          !!d.whatsapp_enabled,
           whatsapp_number:           d.whatsapp_number ?? "",
+          tracking_days:             d.tracking_days ?? "",
         });
         setStats(statsRes.data);
       })
@@ -165,6 +167,7 @@ const ViewOrderSettings = () => {
           order_id_prefix:           settings.order_id_prefix.trim() !== "" ? settings.order_id_prefix.trim().toUpperCase() : null,
           whatsapp_enabled:          settings.whatsapp_enabled,
           whatsapp_number:           settings.whatsapp_number.replace(/\D/g, "") !== "" ? settings.whatsapp_number.replace(/\D/g, "") : null,
+          tracking_days:             settings.tracking_days !== "" ? Number(settings.tracking_days) : null,
         },
         { headers: authHeader }
       );
@@ -303,6 +306,32 @@ const ViewOrderSettings = () => {
                 <strong>{settings.order_id_prefix.trim().toUpperCase()}12345</strong>
               </p>
             )}
+          </div>
+        </SectionCard>
+
+        {/* ── Order Tracking ─────────────────────────────────── */}
+        <SectionCard>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800 mb-1">অর্ডার ট্র্যাকিং</h3>
+              <p className="text-xs text-gray-500">
+                ওয়েবসাইটের <strong>/track</strong> পেজে কাস্টমার কত দিনের পুরোনো অর্ডার পর্যন্ত ট্র্যাক করতে পারবে। এর চেয়ে পুরোনো অর্ডার দেখা যাবে না।
+              </p>
+            </div>
+            <FormField
+              label="ট্র্যাকিং উইন্ডো (দিন)"
+              hint="খালি রাখলে ডিফল্ট ৭ দিন ধরা হবে। সর্বোচ্চ ৯০।"
+            >
+              <Input
+                type="number"
+                name="tracking_days"
+                min={1}
+                max={90}
+                value={settings.tracking_days}
+                onChange={handleChange}
+                placeholder="7"
+              />
+            </FormField>
           </div>
         </SectionCard>
 

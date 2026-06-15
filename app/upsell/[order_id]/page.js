@@ -108,6 +108,9 @@ function MultiProductGrid({ products, selectedItems, onToggle, onSizeChange, cfg
                     <img
                       src={`${config.imageUrl}/${product.image}`}
                       alt={product.name}
+                      width={72}
+                      height={72}
+                      loading="eager"
                       className="w-full h-full object-contain p-1"
                     />
                   </div>

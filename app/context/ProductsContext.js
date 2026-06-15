@@ -34,12 +34,14 @@ function writeCache(payload) {
   } catch { /* quota / private mode — safe to ignore */ }
 }
 
-export default function ProductProvider({ children }) {
+export default function ProductProvider({ children, seed: serverSeed = null }) {
   const apiUrl = config.apiUrl;
 
-  // Seed state synchronously from cache so the first render isn't blank
-  // when the user comes back from /thankyou or refreshes the page.
-  const seed = typeof window === 'undefined' ? null : readCache();
+  // Prefer server-rendered data (passed from the root layout) so the banner +
+  // product grid are in the INITIAL HTML — fast LCP, no loading→content shift.
+  // Falls back to the client localStorage cache (return visits), then null.
+  // Using the SAME value on server + client keeps hydration consistent.
+  const seed = serverSeed || (typeof window === 'undefined' ? null : readCache());
 
   const [products, setProducts]         = useState(seed?.products  || []);
   const [categories, setCategories]     = useState(seed?.categories || []);

@@ -17,15 +17,17 @@ const CartPanel = dynamic(() => import('../../components/CartPanel'), {
   ssr: false,
 });
 
-export default function SingleCategory() {
+export default function SingleCategory({ initialCategory = null }) {
   const params = useParams();
   const categoryId = Number(params.id);
 
   const { pixel, apiUrl, testEventCode, products, loading: contextLoading } = useContext(ProductContext);
   const { totalItems } = useCart();
 
-  const [category, setCategory]   = useState(null);
-  const [catLoading, setCatLoading] = useState(true);
+  // Seed the category header from the server so the page isn't gated on a
+  // client round-trip. The effect below still revalidates in the background.
+  const [category, setCategory]   = useState(initialCategory);
+  const [catLoading, setCatLoading] = useState(!initialCategory);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Single light request just for category meta — products come from context

@@ -9,6 +9,7 @@ import {
   TableSkeleton, EmptyState, ErrorBanner, SuccessAlert, Drawer,
   ConfirmDialog, FormField, Input, Select, InfoBox,
 } from "../../components/Dashboard/DashUI";
+import MessagingGuide from "./MessagingGuide";
 
 const apiUrl = config.apiUrl;
 
@@ -103,6 +104,8 @@ const MessagingCampaigns = () => {
     <div className="space-y-4">
       {error && <ErrorBanner message={error} />}
       {success && <SuccessAlert message={success} />}
+
+      <MessagingGuide variant="marketing" />
 
       <div className="flex justify-end">
         <ActionBtn icon={Plus} onClick={() => setDrawer(true)} disabled={!canCreate}>New Campaign</ActionBtn>

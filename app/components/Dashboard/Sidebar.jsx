@@ -42,6 +42,7 @@ import {
   MenuIcon,
   Search,
   MessageCircle,
+  RefreshCw,
 } from "lucide-react";
 import axios from "axios";
 import { config } from "@/config/config";
@@ -155,6 +156,12 @@ const MENU_GROUPS = [
         icon: Star,
         key: "reviews",
         directItem: "reviewsOverview",
+      },
+      {
+        title: "Exchange Requests",
+        icon: RefreshCw,
+        key: "exchange",
+        directItem: "exchange",
       },
     ],
   },
@@ -408,6 +415,7 @@ const ROLE_ACCESS = {
     customers: ["customerOverview"],
     leads: ["leadOverview"],
     reviews: ["reviewsOverview"],
+    exchange: ["exchange"],
     siteManagement: {
       menu: ["createMenu", "menuOverview"],
       logo: ["createLogo", "logoOverview"],

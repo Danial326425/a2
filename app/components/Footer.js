@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useContext, useMemo } from "react";
+import React, { useContext, useMemo, useState, useEffect } from "react";
 import Image from 'next/image';
 import Link from 'next/link';
+import { config } from "@/config/config";
 import {
-  FaMapMarkerAlt, FaPhone, FaEnvelope,
+  FaMapMarkerAlt, FaPhone, FaEnvelope, FaTruck, FaExchangeAlt,
   FaFacebook, FaInstagram, FaYoutube, FaTwitter, FaLinkedin,
   FaWhatsapp, FaTelegram, FaTiktok, FaPinterest, FaReddit,
   FaDiscord, FaSnapchat, FaSpotify, FaGithub, FaMedium, FaGlobe,
@@ -23,6 +24,17 @@ const SOCIAL_ICONS = {
 
 const Footer = React.memo(function Footer() {
   const { logo, contactInfo, socialLinks, footerMenus, apiStorageUrl } = useContext(HeaderContext);
+
+  // Show the Exchange link only when the feature is turned on in the dashboard.
+  const [exchangeOn, setExchangeOn] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetch(`${config.apiUrl}/exchange/settings`)
+      .then((r) => r.json())
+      .then((d) => { if (active) setExchangeOn(!!d?.enabled); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   const currentYear = new Date().getFullYear();
   const copyrightHtml = useMemo(
@@ -91,6 +103,26 @@ const Footer = React.memo(function Footer() {
         <div>
           <h3 className="text-base font-semibold mb-4">Quick Links</h3>
           <ul className="text-gray-300 space-y-2 text-sm">
+            <li>
+              <Link
+                href="/track"
+                className="hover:text-white hover:translate-x-0.5 inline-flex items-center gap-1.5 transition-all"
+              >
+                <FaTruck className="text-xs text-green-400" />
+                অর্ডার ট্র্যাক করুন
+              </Link>
+            </li>
+            {exchangeOn && (
+              <li>
+                <Link
+                  href="/exchange"
+                  className="hover:text-white hover:translate-x-0.5 inline-flex items-center gap-1.5 transition-all"
+                >
+                  <FaExchangeAlt className="text-xs text-green-400" />
+                  এক্সচেঞ্জ রিকোয়েস্ট
+                </Link>
+              </li>
+            )}
             {(footerMenus || []).map((menu) => (
               <li key={menu.id}>
                 <Link

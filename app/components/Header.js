@@ -10,6 +10,7 @@ import {
   FaBars,
   FaSearch,
   FaTimes,
+  FaTruck,
 } from 'react-icons/fa';
 import { HeaderContext } from '../context/HeaderContext';
 import { config } from "@/config/config";
@@ -104,6 +105,13 @@ export default function Header() {
                   <FaSearch />
                 </button>
                 <Link
+                  href="/track"
+                  className="text-green-700 p-2 rounded-full hover:bg-green-50 transition-colors"
+                  aria-label="Track Order"
+                >
+                  <FaTruck />
+                </Link>
+                <Link
                   href="/contact"
                   className="text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
                   aria-label="Contact"
@@ -163,6 +171,15 @@ export default function Header() {
 
               {/* User Actions */}
               <div className="flex items-center space-x-4">
+                <Link
+                  href="/track"
+                  className="flex items-center text-gray-700 hover:text-green-600 transition-colors"
+                >
+                  <div className="p-2 hover:bg-green-50 rounded-full">
+                    <FaTruck className="text-lg" />
+                  </div>
+                  <span className="ml-2 hidden lg:inline-block">Tracking</span>
+                </Link>
                 <Link
                   href="/contact"
                   className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
@@ -246,7 +263,7 @@ export default function Header() {
               </div>
 
               <nav className="flex-1 ml-6">
-                <ul className="flex space-x-1">
+                <ul className="flex space-x-1 items-center">
                   {headerMenus.map((menu) => (
                     <li key={menu.id}>
                       <Link
@@ -290,6 +307,15 @@ export default function Header() {
                       onClick={() => setCategoryOpen(false)}
                     >
                       <span className="font-medium">All Products</span>
+                    </Link>
+
+                    <Link
+                      href="/track"
+                      className="px-5 py-3.5 text-green-700 hover:bg-green-50 transition-colors border-b border-gray-100 flex items-center gap-2 font-semibold"
+                      onClick={() => setCategoryOpen(false)}
+                    >
+                      <FaTruck className="text-sm" />
+                      <span>অর্ডার ট্র্যাক করুন</span>
                     </Link>
 
                     <ul>

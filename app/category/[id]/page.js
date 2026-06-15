@@ -47,6 +47,11 @@ export async function generateMetadata({ params }) {
   });
 }
 
-export default function Page() {
-  return <CategoryClient />;
+export default async function Page({ params }) {
+  const { id } = await params;
+  // Reuse the cached category fetch (deduped with generateMetadata) and pass it
+  // down so CategoryClient renders the header immediately — no client round-trip
+  // gating the product grid. Products come from the SSR-seeded ProductContext.
+  const initialCategory = await getCategory(id);
+  return <CategoryClient initialCategory={initialCategory} />;
 }

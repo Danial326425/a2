@@ -9,6 +9,7 @@ import ClientLayout from "./components/ClientLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { buildSEO } from "./lib/seo";
 import { getGlobalSeo } from "./lib/seo/getGlobalSeo";
+import { getHomepageData } from "./lib/getHomepageData";
 import { config } from "@/config/config";
 
 const geistSans = Geist({
@@ -183,7 +184,10 @@ export async function generateMetadata() {
 }
 
 export default async function RootLayout({ children }) {
-  const seo = await getGlobalSeo();
+  const [seo, homepageData] = await Promise.all([
+    getGlobalSeo(),
+    getHomepageData(),
+  ]);
   const lang = seo.language || 'en';
 
   return (
@@ -272,7 +276,7 @@ export default async function RootLayout({ children }) {
 
         <ErrorBoundary>
           <CartProvider>
-            <ProductProvider>
+            <ProductProvider seed={homepageData}>
               <HeaderProvider>
                 <OrderProvider>
                   <ClientLayout>

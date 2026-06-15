@@ -8,6 +8,7 @@ import {
   SectionCard, Badge, Select, Toggle, ErrorBanner, SuccessAlert,
   Spinner, InfoBox,
 } from "../../components/Dashboard/DashUI";
+import MessagingGuide from "./MessagingGuide";
 
 const apiUrl = config.apiUrl;
 
@@ -82,10 +83,11 @@ const MessagingStatusMessages = () => {
       {error && <ErrorBanner message={error} />}
       {success && <SuccessAlert message={success} />}
 
+      <MessagingGuide variant="status" />
+
       <InfoBox variant="info">
-        Choose which WhatsApp message goes out at each stage of an order. Every status template uses
-        the same 4 variables in order — <strong>{"{{1}}"} name, {"{{2}}"} order&nbsp;ID, {"{{3}}"} product, {"{{4}}"} total</strong>.
-        Only <strong>utility</strong> templates appear here.
+        Choose which WhatsApp message goes out at each stage of an order. Only <strong>utility</strong>{" "}
+        templates appear here.
       </InfoBox>
 
       {noTemplates && (
