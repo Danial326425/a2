@@ -155,11 +155,16 @@ export default function ProductSeoSection({
     return globalSeo.settings.og_image;
   }, [globalSeo.settings.og_image, productMainImage, seo]);
 
+  // Canonical / slug-preview base: the dashboard "Site URL" (Global SEO →
+  // Advanced) wins, else the build-time config. This is what keeps the preview
+  // and auto-generated canonical off localhost without a rebuild.
+  const siteBase = (globalSeo.settings?.site_url || config.siteUrl || "").replace(/\/+$/, "");
+
   const previewSettings = {
     site_title: globalSeo.settings.site_title,
     title: fieldValue(seo, "meta_title", globalSeo.settings.title || formData.name),
     description: fieldValue(seo, "meta_description", globalSeo.settings.description),
-    canonical_url: seo.canonical_url || `${config.siteUrl}/${formData.slug || ""}`,
+    canonical_url: seo.canonical_url || `${siteBase}/${formData.slug || ""}`,
     og_title: fieldValue(seo, "og_title", seo.meta_title || globalSeo.settings.og_title || formData.name),
     og_description: fieldValue(seo, "og_description", seo.meta_description || globalSeo.settings.og_description),
     og_image: effectiveImage,
@@ -193,16 +198,16 @@ export default function ProductSeoSection({
                 <SeoInput label="SEO Slug" value={formData.slug || ""} onChange={(v) => updateSlug(slugifyProduct(v))} helpText="Auto-generated from name, editable." />
               </div>
               <div className={`rounded-lg border px-3 py-2 text-xs ${slugState.available === false ? "border-red-200 bg-red-50 text-red-700" : slugState.available ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-gray-50 text-gray-500"}`}>
-                {slugState.message} URL: {config.siteUrl}/{formData.slug || "product-slug"}
+                {slugState.message} URL: {siteBase}/{formData.slug || "product-slug"}
                 {productId && <span className="ml-2 text-amber-700">Changing slug may break existing links. Add a 301 redirect if the old URL is already public.</span>}
               </div>
               <SeoTextarea label="Meta Description" value={seo.meta_description} onChange={(v) => updateSeo("meta_description", v)} maxLength={160} recommendedRange={[150, 160]} placeholder={globalSeo.settings.description || "Use global default"} />
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <SeoInput label="Meta Keywords" value={seo.meta_keywords} onChange={(v) => updateSeo("meta_keywords", v)} placeholder={globalSeo.settings.keywords || "Use global default"} />
-                <SeoInput label="Canonical URL" value={seo.canonical_url} onChange={(v) => updateSeo("canonical_url", v)} error={errors.canonical_url} placeholder={`${config.siteUrl}/${formData.slug || ""}`} />
+                <SeoInput label="Canonical URL" value={seo.canonical_url} onChange={(v) => updateSeo("canonical_url", v)} error={errors.canonical_url} placeholder={`${siteBase}/${formData.slug || ""}`} />
               </div>
               <div className="flex justify-end">
-                <ActionBtn type="button" variant="secondary" size="sm" icon={Wand2} onClick={() => updateSeo("canonical_url", `${config.siteUrl}/${formData.slug || ""}`)}>
+                <ActionBtn type="button" variant="secondary" size="sm" icon={Wand2} onClick={() => updateSeo("canonical_url", `${siteBase}/${formData.slug || ""}`)}>
                   Auto-generate canonical
                 </ActionBtn>
               </div>
