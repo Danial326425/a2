@@ -305,15 +305,6 @@ export default function Header() {
                       <span className="font-medium">All Products</span>
                     </Link>
 
-                    <Link
-                      href="/track"
-                      className="px-5 py-3.5 text-green-700 hover:bg-green-50 transition-colors border-b border-gray-100 flex items-center gap-2 font-semibold"
-                      onClick={() => setCategoryOpen(false)}
-                    >
-                      <FaTruck className="text-sm" />
-                      <span>অর্ডার ট্র্যাক করুন</span>
-                    </Link>
-
                     <ul>
                       {categories.map((category) => (
                         <li key={`mobile-cat-${category.id}`}>
