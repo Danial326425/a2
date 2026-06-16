@@ -3,7 +3,6 @@
 import { useContext, useMemo } from "react";
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import Slider from "react-slick";
 import { config } from "@/config/config";
 import { ProductContext } from "../context/ProductsContext";
 
@@ -30,50 +29,6 @@ export default function Category({ toggleSidebar }) {
     return null;
   }
 
-  const totalSlides = Math.min(mainCategories.length, 8);
-  const actualRows = totalSlides <= 4 ? 1 : 2;
-
-  const settings = {
-    dots: false,
-    infinite: true,
-    speed: 500,
-    slidesToShow: Math.min(mainCategories.length, 4),
-    slidesToScroll: 1,
-    rows: actualRows,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    responsive: [
-      {
-        breakpoint: 1024,
-        settings: {
-          slidesToShow: Math.min(mainCategories.length, 4),
-          rows: actualRows
-        }
-      },
-      {
-        breakpoint: 768,
-        settings: {
-          slidesToShow: Math.min(mainCategories.length, 4),
-          rows: actualRows
-        }
-      },
-      {
-        breakpoint: 640,
-        settings: {
-          slidesToShow: Math.min(mainCategories.length, 4),
-          rows: actualRows
-        }
-      },
-      {
-        breakpoint: 480,
-        settings: {
-          slidesToShow: Math.min(mainCategories.length, 4),
-          rows: actualRows
-        }
-      }
-    ]
-  };
-
   return (
     <div className="container mx-auto py-6 px-4">
       <div className="mb-6 text-center">
@@ -83,8 +38,10 @@ export default function Category({ toggleSidebar }) {
         </p>
       </div>
 
-      <Slider {...settings}>
-        {mainCategories.map((category) => (
+      {/* Static CSS grid — no react-slick. The carousel pulled a heavy library
+          (+ slick.css) into the homepage bundle and slowed hydration/TTI. */}
+      <div className="grid grid-cols-4 gap-2 md:gap-4">
+        {mainCategories.slice(0, 8).map((category) => (
           <CategoryCard
             key={category.id}
             category={category}
@@ -92,7 +49,7 @@ export default function Category({ toggleSidebar }) {
             onClick={() => handleCategoryClick(category.id)}
           />
         ))}
-      </Slider>
+      </div>
     </div>
   );
 }
