@@ -120,7 +120,7 @@ export default function CategoryProducts() {
   return (
     <div className="bg-gray-50 min-h-screen relative pb-16">
       <div className="container mx-auto py-8 px-4">
-        {homepageCategories.map((category) => {
+        {homepageCategories.map((category, categoryIndex) => {
           const allCategoryProducts = products
             .filter((product) => product.categories?.some((c) => c.id === category.id))
             .reverse();
@@ -140,6 +140,7 @@ export default function CategoryProducts() {
               category={category}
               products={displayedProducts}
               hasMoreProducts={hasMoreProducts}
+              firstSection={categoryIndex === 0}
               selectedOptions={selectedOptions}
               openDropdowns={openDropdowns}
               onToggleDropdown={toggleDropdown}
@@ -162,6 +163,7 @@ function CategorySection({
   category,
   products,
   hasMoreProducts,
+  firstSection = false,
   selectedOptions,
   openDropdowns,
   onToggleDropdown,
@@ -186,10 +188,11 @@ function CategorySection({
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-        {products.map((product) => (
+        {products.map((product, productIndex) => (
           <ProductCard
             key={product.id}
             product={product}
+            priority={firstSection && productIndex < 4}
             selectedOptions={selectedOptions}
             openDropdowns={openDropdowns}
             onToggleDropdown={onToggleDropdown}
@@ -207,6 +210,7 @@ function CategorySection({
 
 function ProductCard({
   product,
+  priority = false,
   selectedOptions,
   openDropdowns,
   onToggleDropdown,
@@ -228,7 +232,7 @@ function ProductCard({
   const isSingleSizeProduct = hasSingleSizes && !hasColors;
 
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden flex flex-col h-full relative group">
+    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full relative group touch-manipulation active:scale-[0.98]">
       {product.discount_price && (
         <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
           {discountPercentage}% OFF
@@ -241,6 +245,7 @@ function ProductCard({
             product={product}
             hasColors={hasColors}
             selectedColor={selectedColor}
+            priority={priority}
           />
         </Link>
       </div>
@@ -292,7 +297,7 @@ function ProductCard({
   );
 }
 
-function ProductImage({ product, hasColors }) {
+function ProductImage({ product, hasColors, priority = false }) {
   if (hasColors) {
     if (product.colors.length === 1) {
       return (
@@ -302,11 +307,12 @@ function ProductImage({ product, hasColors }) {
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+          priority={priority}
         />
       );
     }
 
-    return <ColorImageCycler colors={product.colors} name={product.name} />;
+    return <ColorImageCycler colors={product.colors} name={product.name} priority={priority} />;
   }
 
   return (
@@ -316,6 +322,7 @@ function ProductImage({ product, hasColors }) {
       fill
       className="object-cover transition-transform duration-500 group-hover:scale-105"
       sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+      priority={priority}
     />
   );
 }
@@ -324,7 +331,7 @@ function ProductImage({ product, hasColors }) {
 // a full carousel per product card, and dozens of them on the homepage blocked
 // the main thread for several seconds during hydration — so clicks/links were
 // dead until it finished. This is a tiny CSS opacity fade with one interval.
-function ColorImageCycler({ colors, name }) {
+function ColorImageCycler({ colors, name, priority = false }) {
   const [active, setActive] = useState(0);
 
   useEffect(() => {
@@ -343,7 +350,8 @@ function ColorImageCycler({ colors, name }) {
           fill
           className={`object-cover transition-opacity duration-500 group-hover:scale-105 ${i === active ? 'opacity-100' : 'opacity-0'}`}
           sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
-          loading={i === 0 ? 'eager' : 'lazy'}
+          // First image of an above-the-fold card is an LCP candidate → eager + fetchpriority.
+          priority={priority && i === 0}
         />
       ))}
     </>

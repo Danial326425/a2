@@ -60,7 +60,7 @@ function CategoryCard({ category, imageProxyUrl, onClick }) {
       <div className="flex flex-col h-full">
         <button
           onClick={onClick}
-          className="w-full text-left group relative flex flex-col h-full"
+          className="w-full text-left group relative flex flex-col h-full select-none touch-manipulation transition-transform duration-150 active:scale-95"
         >
           <div className="relative flex-shrink-0 overflow-hidden rounded-xl lg:rounded-2xl bg-white shadow-sm border border-gray-200 transition-all duration-300 hover:shadow-lg hover:scale-105 p-1 aspect-square">
             <div className="relative z-10 rounded-lg lg:rounded-xl overflow-hidden bg-white w-full h-full">

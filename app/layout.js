@@ -7,6 +7,7 @@ import HeaderProvider from "./context/HeaderContext";
 import ProductProvider from "./context/ProductsContext";
 import ClientLayout from "./components/ClientLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
+import TopProgressBar from "./components/TopProgressBar";
 import { buildSEO } from "./lib/seo";
 import { getGlobalSeo } from "./lib/seo/getGlobalSeo";
 import { getHomepageData } from "./lib/getHomepageData";
@@ -267,6 +268,9 @@ export default async function RootLayout({ children }) {
       </head>
 
       <body className="min-h-full flex flex-col">
+        {/* Instant navigation feedback on every internal tap (mobile-friendly). */}
+        <TopProgressBar />
+
         {/* GTM noscript fallback (required by GTM spec). */}
         {seo.gtm_id && seo.gtm_active !== '0' && (
           <noscript>

@@ -22,7 +22,6 @@ export default function Header() {
     contactInfo,
     logo,
     headerMenus,
-    error,
     apiStorageUrl,
     searchProducts,
     showResults,
@@ -39,13 +38,10 @@ export default function Header() {
     setShowResults(false);
   };
 
-  if (error) {
-    return (
-      <div className="bg-red-100 text-red-700 p-4 text-center">
-        Error: {error}
-      </div>
-    );
-  }
+  // Note: we intentionally do NOT replace the header with an error box on a
+  // fetch failure. The header must always render its navigation using the
+  // cached/seeded data — a transient network blip (common on mobile waking from
+  // idle) should never wipe the site chrome. ProductContext recovers in the bg.
 
   return (
     <>

@@ -138,10 +138,10 @@ export default function ExchangeClient() {
             type="tel" inputMode="numeric" value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="আপনার মোবাইল নম্বর"
-            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 text-gray-800"
+            className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 text-gray-800"
           />
           <button type="submit" disabled={searching}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors disabled:opacity-60">
+            className="shrink-0 whitespace-nowrap inline-flex items-center gap-2 px-4 sm:px-5 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors disabled:opacity-60">
             {searching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
             খুঁজুন
           </button>

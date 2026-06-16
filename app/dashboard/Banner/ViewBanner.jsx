@@ -45,8 +45,8 @@ const ViewBanner = () => {
   const handleEditClick = (banner) => {
     setEditingBanner(banner.id);
     setFormData({
-      title: banner.title, description: banner.description, link: banner.link,
-      is_active: banner.is_active, sort_order: banner.sort_order, image: null,
+      title: banner.title || "", description: banner.description || "", link: banner.link || "",
+      is_active: banner.is_active, sort_order: banner.sort_order ?? 0, image: null,
     });
     setPreviewUrl(`${imageUrl}/${banner.image}`);
   };
@@ -72,12 +72,15 @@ const ViewBanner = () => {
     setLoading(true); setError(null);
     const data = new FormData();
     data.append("_method", "PUT");
-    data.append("title", formData.title);
-    data.append("description", formData.description);
+    // Coalesce null/undefined to "" — otherwise FormData sends the literal
+    // string "null", which fails the backend `link => nullable|url` rule and
+    // forces the user to enter a link just to update the image.
+    data.append("title", formData.title || "");
+    data.append("description", formData.description || "");
     if (formData.image) data.append("image", formData.image);
-    data.append("link", formData.link);
+    data.append("link", formData.link || "");
     data.append("is_active", formData.is_active ? "1" : "0");
-    data.append("sort_order", formData.sort_order);
+    data.append("sort_order", formData.sort_order || 0);
     try {
       await axios.post(`${apiUrl}/bannersupdate/${editingBanner}`, data, {
         headers: { "Content-Type": "multipart/form-data" },

@@ -61,6 +61,9 @@ export default function ProductProvider({ children, seed: serverSeed = null }) {
 
   const abortControllerRef = useRef(null);
   const isMountedRef       = useRef(false);
+  // True once we have usable data (server seed or a successful fetch). Used so a
+  // LATER transient failure (e.g. mobile waking from idle) never wipes the UI.
+  const hasDataRef         = useRef(!!seed);
 
   const fetchAllData = useCallback(async () => {
     if (abortControllerRef.current) {
@@ -94,6 +97,7 @@ export default function ProductProvider({ children, seed: serverSeed = null }) {
       setTestEventCode(testCodes);
       setIsPurchase(purchase);
       setTrackingConfigReady(true);
+      hasDataRef.current = true;
 
       writeCache({
         products: data.products || [],
@@ -109,7 +113,10 @@ export default function ProductProvider({ children, seed: serverSeed = null }) {
       });
     } catch (err) {
       if (axios.isCancel(err)) return;
-      if (isMountedRef.current) setError(err.message);
+      // Only surface a blocking error on the FIRST load (no data yet). A
+      // transient failure during background revalidation must NOT wipe the
+      // header/nav — keep the cached/seeded data (stale-while-revalidate).
+      if (isMountedRef.current && !hasDataRef.current) setError(err.message);
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
@@ -123,6 +130,24 @@ export default function ProductProvider({ children, seed: serverSeed = null }) {
     return () => {
       isMountedRef.current = false;
       abortControllerRef.current?.abort();
+    };
+  }, [fetchAllData]);
+
+  // Recover when the connection returns or the tab is re-opened (common on
+  // mobile after the page sat idle): clear any error and refresh in the
+  // background. Without this, a one-off network blip left a stale error showing.
+  useEffect(() => {
+    const recover = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      setError(null);
+      fetchAllData();
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') recover(); };
+    window.addEventListener('online', recover);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('online', recover);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [fetchAllData]);
 
