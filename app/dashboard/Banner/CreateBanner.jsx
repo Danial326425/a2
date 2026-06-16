@@ -32,7 +32,9 @@ const CreateBanner = ({ onBannerCreated }) => {
     if (!file) return;
     setCompressing(true); setError(null);
     try {
-      const blob = await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 2560, useWebWorker: true, fileType: "image/webp", initialQuality: 0.95 });
+      // Banner is the homepage LCP image — compress aggressively. 1600px is
+      // plenty for a full-width 16:5 banner; ~0.35MB webp keeps LCP fast.
+      const blob = await imageCompression(file, { maxSizeMB: 0.35, maxWidthOrHeight: 1600, useWebWorker: true, fileType: "image/webp", initialQuality: 0.72 });
       const compressed = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", { type: "image/webp" });
       setFormData(prev => ({ ...prev, image: compressed }));
       setPreview(URL.createObjectURL(compressed));

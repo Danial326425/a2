@@ -20,7 +20,9 @@ const UpdateBanner = ({
     setIsCompressing(true); setLocalError(null);
     try {
       const compressed = await imageCompression(file, {
-        maxSizeMB: 0.5, maxWidthOrHeight: 1024, useWebWorker: true, fileType: "image/webp",
+        // 1024px was too small for a full-width banner (blurry on desktop);
+        // 1600px stays sharp while keeping the file small for fast LCP.
+        maxSizeMB: 0.35, maxWidthOrHeight: 1600, useWebWorker: true, fileType: "image/webp", initialQuality: 0.72,
       });
       const webpFile = new File([compressed], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
         type: "image/webp", lastModified: Date.now(),

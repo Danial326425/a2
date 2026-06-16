@@ -45,6 +45,7 @@ export default function BannerSlider({ banners }) {
               fill
               className="object-cover"
               sizes="100vw"
+              quality={65}
               // First banner is the LCP image: eager + fetchpriority=high + preload.
               priority={i === 0}
             />

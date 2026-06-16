@@ -4,16 +4,16 @@ import { useContext } from "react";
 import dynamic from "next/dynamic";
 
 import { ProductContext } from "@/app/context/ProductsContext";
+import BannerSlider from "@/app/components/BannerSlider";
 import {
   BannerSkeleton, CategoryStripSkeleton, CategorySectionSkeleton,
 } from "@/app/components/ui/Skeleton";
 
-// Heavy children — split out of the initial JS bundle so the homepage shell
-// hydrates faster. CategoryProducts pulls in react-slick, image-heavy lists,
-// and the cart panel; BannerSlider pulls slick CSS + JS.
-const BannerSlider = dynamic(() => import("@/app/components/BannerSlider"), {
-  loading: () => <BannerSkeleton />,
-});
+// BannerSlider is imported DIRECTLY (not dynamic) because it holds the LCP
+// image — a dynamic boundary kept next/image's `priority` preload out of the
+// initial HTML, so the banner was discovered late + without fetchpriority.
+// (It no longer pulls react-slick, so it's lightweight now.)
+// Below-the-fold children stay code-split for faster hydration.
 const Category = dynamic(() => import("@/app/components/Category"), {
   loading: () => <CategoryStripSkeleton cols={4} />,
 });

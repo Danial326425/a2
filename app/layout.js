@@ -196,6 +196,11 @@ export default async function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        {/* Preconnect to the backend image origin — product/category images load
+            from here via next/image, so opening the connection early shaves LCP. */}
+        <link rel="preconnect" href={config.backendUrl} />
+        <link rel="dns-prefetch" href={config.backendUrl} />
+
         {/* Facebook/Meta domain verification — rendered directly in <head> so
             it's in the static server HTML (Meta rejects JS-injected tags). Set
             from Dashboard → SEO Settings → Verification. The Next.js metadata
