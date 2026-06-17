@@ -2,7 +2,7 @@
 
 import { useContext, useMemo } from "react";
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { config } from "@/config/config";
 import { ProductContext } from "../context/ProductsContext";
 
@@ -16,10 +16,11 @@ export default function Category({ toggleSidebar }) {
   }, [categories]);
 
   const imageProxyUrl = '/api/storage';
-  const router = useRouter();
 
-  const handleCategoryClick = (categoryId) => {
-    router.push(`/category/${categoryId}`);
+  // Navigation is now handled by <Link> (so Next.js prefetches the category
+  // route + the global progress bar fires on tap). This only closes the mobile
+  // sidebar after a tap — the Link still performs the actual navigation.
+  const handleCategoryClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024 && toggleSidebar) {
       toggleSidebar();
     }
@@ -46,7 +47,7 @@ export default function Category({ toggleSidebar }) {
             key={category.id}
             category={category}
             imageProxyUrl={imageProxyUrl}
-            onClick={() => handleCategoryClick(category.id)}
+            onClick={handleCategoryClick}
           />
         ))}
       </div>
@@ -58,7 +59,8 @@ function CategoryCard({ category, imageProxyUrl, onClick }) {
   return (
     <div className="px-[2px] md:px-2">
       <div className="flex flex-col h-full">
-        <button
+        <Link
+          href={`/category/${category.id}`}
           onClick={onClick}
           className="w-full text-left group relative flex flex-col h-full select-none touch-manipulation transition-transform duration-150 active:scale-95"
         >
@@ -82,7 +84,7 @@ function CategoryCard({ category, imageProxyUrl, onClick }) {
               {category.name}
             </p>
           </div>
-        </button>
+        </Link>
       </div>
     </div>
   );

@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, memo } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import Slider from 'react-slick';
 import {
   FaShoppingCart, FaChevronDown, FaChevronUp,
 } from 'react-icons/fa';
@@ -19,12 +18,6 @@ import { useCart } from '../context/CartContext';
  *   than one color image exists.
  */
 const imageProxyUrl = '/api/storage';
-
-const sliderSettings = {
-  dots: false, infinite: true, speed: 500,
-  slidesToShow: 1, slidesToScroll: 1,
-  autoplay: true, autoplaySpeed: 3000, arrows: false,
-};
 
 const ProductCard = memo(function ProductCard({ product }) {
   const { addItem } = useCart();
@@ -243,22 +236,7 @@ function ProductImage({ product, hasColors }) {
         />
       );
     }
-    return (
-      <Slider {...sliderSettings}>
-        {product.colors.map((color) => (
-          <div key={color.id}>
-            <Image
-              src={`${imageProxyUrl}/${color.image}`}
-              alt={`${color.color} ${product.name}`}
-              width={500}
-              height={500}
-              className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-105"
-              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
-            />
-          </div>
-        ))}
-      </Slider>
-    );
+    return <ColorImageCycler colors={product.colors} name={product.name} />;
   }
   return (
     <Image
@@ -268,6 +246,35 @@ function ProductImage({ product, hasColors }) {
       className="object-cover transition-transform duration-500 group-hover:scale-105"
       sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
     />
+  );
+}
+
+// Lightweight color-image cycler — replaces the old react-slick Slider.
+// react-slick needs slick.css (which is no longer imported anywhere), so its
+// slides rendered with no layout → multi-color product images went invisible.
+// This is a tiny CSS opacity fade with one interval, matching CategoryProducts.
+function ColorImageCycler({ colors, name }) {
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    if (colors.length <= 1) return undefined;
+    const t = setInterval(() => setActive((a) => (a + 1) % colors.length), 3000);
+    return () => clearInterval(t);
+  }, [colors.length]);
+
+  return (
+    <>
+      {colors.map((color, i) => (
+        <Image
+          key={color.id}
+          src={`${imageProxyUrl}/${color.image}`}
+          alt={`${color.color} ${name}`}
+          fill
+          className={`object-cover transition-opacity duration-500 group-hover:scale-105 ${i === active ? 'opacity-100' : 'opacity-0'}`}
+          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+        />
+      ))}
+    </>
   );
 }
 

@@ -117,39 +117,50 @@ export default function CategoryProducts() {
     [categories]
   );
 
+  // Pre-build the renderable sections and give the FIRST 4 product images on the
+  // page (across sections, skipping empty categories) a priority "budget" so
+  // they load EAGERLY — they're the above-the-fold LCP candidates. Without this
+  // every product image was loading="lazy", so on mobile the LCP image only
+  // appeared after the grid hydrated → LCP ~8s.
+  const sections = useMemo(() => {
+    let priorityBudget = 4;
+    const out = [];
+    for (const category of homepageCategories) {
+      const all = products
+        .filter((product) => product.categories?.some((c) => c.id === category.id))
+        .reverse();
+      const displayed = category.product_limit ? all.slice(0, category.product_limit) : all;
+      if (displayed.length === 0) continue;
+      const priorityCount = Math.min(priorityBudget, displayed.length);
+      priorityBudget -= priorityCount;
+      out.push({
+        category,
+        products: displayed,
+        hasMoreProducts: category.product_limit ? all.length > category.product_limit : false,
+        priorityCount,
+      });
+    }
+    return out;
+  }, [homepageCategories, products]);
+
   return (
     <div className="bg-gray-50 min-h-screen relative pb-16">
       <div className="container mx-auto py-8 px-4">
-        {homepageCategories.map((category, categoryIndex) => {
-          const allCategoryProducts = products
-            .filter((product) => product.categories?.some((c) => c.id === category.id))
-            .reverse();
-
-          const displayedProducts = category.product_limit
-            ? allCategoryProducts.slice(0, category.product_limit)
-            : allCategoryProducts;
-          const hasMoreProducts = category.product_limit
-            ? allCategoryProducts.length > category.product_limit
-            : false;
-
-          if (displayedProducts.length === 0) return null;
-
-          return (
-            <CategorySection
-              key={category.id}
-              category={category}
-              products={displayedProducts}
-              hasMoreProducts={hasMoreProducts}
-              firstSection={categoryIndex === 0}
-              selectedOptions={selectedOptions}
-              openDropdowns={openDropdowns}
-              onToggleDropdown={toggleDropdown}
-              onColorSelect={handleColorSelect}
-              onSizeSelect={handleSizeSelect}
-              onAddToCart={handleAddToCart}
-            />
-          );
-        })}
+        {sections.map(({ category, products: displayed, hasMoreProducts, priorityCount }) => (
+          <CategorySection
+            key={category.id}
+            category={category}
+            products={displayed}
+            hasMoreProducts={hasMoreProducts}
+            priorityCount={priorityCount}
+            selectedOptions={selectedOptions}
+            openDropdowns={openDropdowns}
+            onToggleDropdown={toggleDropdown}
+            onColorSelect={handleColorSelect}
+            onSizeSelect={handleSizeSelect}
+            onAddToCart={handleAddToCart}
+          />
+        ))}
       </div>
 
       <FloatingCartButton totalItems={totalItems} onClick={() => setIsCartOpen(true)} />
@@ -163,7 +174,7 @@ function CategorySection({
   category,
   products,
   hasMoreProducts,
-  firstSection = false,
+  priorityCount = 0,
   selectedOptions,
   openDropdowns,
   onToggleDropdown,
@@ -192,7 +203,7 @@ function CategorySection({
           <ProductCard
             key={product.id}
             product={product}
-            priority={firstSection && productIndex < 4}
+            priority={productIndex < priorityCount}
             selectedOptions={selectedOptions}
             openDropdowns={openDropdowns}
             onToggleDropdown={onToggleDropdown}

@@ -1,6 +1,18 @@
-import Link from 'next/link';
-import Image from 'next/image';
-import { config } from "@/config/config";
+'use client';
+
+import dynamic from 'next/dynamic';
+
+// Reuse the SAME product card as the category / shop pages so search results
+// match the rest of the site — and so images + product links actually work.
+// (The old custom card used `product.image` — which doesn't exist; products
+// carry `colors[]` / `images[]` — and linked to `/product/{id}` instead of the
+// real `/{slug}` route.)
+//
+// Loaded dynamically so the card (and its deps) aren't pulled into the header
+// bundle on every page — only when the customer actually searches.
+const ProductCard = dynamic(() => import('./ProductCard'), {
+  loading: () => <div className="aspect-square bg-gray-100 rounded-lg animate-pulse" />,
+});
 
 export default function SearchResults({ products }) {
   if (!products || products.length === 0) {
@@ -13,33 +25,9 @@ export default function SearchResults({ products }) {
 
   return (
     <div className="container mx-auto px-4 py-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {products.map((product) => (
-          <Link
-            key={product.id}
-            href={`/product/${product.id}`}
-            className="group block bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
-          >
-            <div className="relative aspect-square bg-gray-100">
-              <Image
-                src={`/api/storage/${product.image}`}
-                alt={product.name}
-                fill
-                sizes="(max-width: 768px) 50vw, 200px"
-                className="object-cover group-hover:scale-105 transition-transform"
-              />
-            </div>
-            <div className="p-3">
-              <h3 className="text-sm font-medium text-gray-800 truncate group-hover:text-green-600">
-                {product.name}
-              </h3>
-              {product.price && (
-                <p className="text-green-600 font-semibold mt-1">
-                  ৳{product.price}
-                </p>
-              )}
-            </div>
-          </Link>
+          <ProductCard key={product.id} product={product} />
         ))}
       </div>
     </div>
