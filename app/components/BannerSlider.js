@@ -8,8 +8,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { config } from '@/config/config';
 
-const imageProxyUrl = '/api/storage';
+// Direct backend origin (no /api/storage proxy hop) — the banner is the mobile
+// LCP image, so removing a hop here matters most.
+const imageProxyUrl = config.imageUrl;
 const AUTOPLAY_MS = 4000;
 
 export default function BannerSlider({ banners }) {

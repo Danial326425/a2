@@ -9,8 +9,18 @@ const nextConfig = {
     root: __dirname,
   },
   images: {
-    // Serve modern, much smaller formats (AVIF → WebP) from the optimizer.
-    formats: ['image/avif', 'image/webp'],
+    // WebP only. AVIF gives slightly smaller files but its on-the-fly encode
+    // is 5-10x SLOWER than WebP on a typical VPS, and the encoder serializes —
+    // so on a cold load every above-the-fold image queues behind AVIF jobs and
+    // the LCP image stalls for many seconds. WebP is the right trade for LCP.
+    formats: ['image/webp'],
+    // We only ever request these two quality levels (65 for banners, 75 the
+    // default). Declaring them keeps Next from falling back / warning.
+    qualities: [65, 75],
+    // Fewer breakpoints → fewer distinct optimizer jobs / cache entries to warm
+    // (the defaults include sizes we never use on a content-width layout).
+    deviceSizes: [360, 480, 640, 768, 1080, 1200, 1920],
+    imageSizes: [64, 128, 256, 384],
     // Cache optimized images server-side for 31 days so the LCP image and
     // repeat views aren't re-optimized every request.
     minimumCacheTTL: 2678400,

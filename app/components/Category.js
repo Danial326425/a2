@@ -15,7 +15,8 @@ export default function Category({ toggleSidebar }) {
     );
   }, [categories]);
 
-  const imageProxyUrl = '/api/storage';
+  // Direct backend origin (no /api/storage proxy hop) — see CategoryProducts.
+  const imageProxyUrl = config.imageUrl;
 
   // Navigation is now handled by <Link> (so Next.js prefetches the category
   // route + the global progress bar fires on tap). This only closes the mobile

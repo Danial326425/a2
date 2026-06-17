@@ -7,6 +7,7 @@ import {
   FaShoppingCart, FaChevronDown, FaChevronUp,
 } from 'react-icons/fa';
 import { useCart } from '../context/CartContext';
+import { config } from '@/config/config';
 
 /**
  * Self-contained product card with internal state for color/size selection.
@@ -17,7 +18,8 @@ import { useCart } from '../context/CartContext';
  * - Image variations use a single-axis slick slider (autoplay) when more
  *   than one color image exists.
  */
-const imageProxyUrl = '/api/storage';
+// Direct backend origin (no /api/storage proxy hop) — see CategoryProducts.
+const imageProxyUrl = config.imageUrl;
 
 const ProductCard = memo(function ProductCard({ product }) {
   const { addItem } = useCart();
@@ -92,7 +94,9 @@ const ProductCard = memo(function ProductCard({ product }) {
       </div>
 
       <div className="p-3 flex flex-col flex-grow">
-        <h3 className="font-semibold text-gray-800 mb-1 line-clamp-2 text-center">
+        {/* Reserve two lines so cards keep a uniform height regardless of title
+            length — keeps grid rows from reflowing (CLS) as content settles. */}
+        <h3 className="font-semibold text-gray-800 mb-1 line-clamp-2 text-center min-h-[2.75rem]">
           {product.name}
         </h3>
 

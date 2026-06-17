@@ -130,13 +130,16 @@ function CategoryGridSkeleton() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4">
       {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="bg-white rounded-xl shadow-md overflow-hidden animate-pulse">
+        <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse flex flex-col">
           <div className="aspect-square bg-gray-200" />
-          <div className="p-3 space-y-2.5">
+          {/* Mirror the real ProductCard's content block height so the
+              skeleton→content swap doesn't shift the grid (CLS). */}
+          <div className="p-3 flex flex-col flex-grow">
             <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto" />
-            <div className="h-5 bg-gray-200 rounded w-1/3 mx-auto" />
-            <div className="h-8 bg-gray-200 rounded mt-3" />
-            <div className="h-8 bg-gray-200 rounded" />
+            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto mt-1" />
+            <div className="h-6 bg-gray-200 rounded w-1/3 mx-auto mt-2" />
+            <div className="h-9 bg-gray-200 rounded mt-3" />
+            <div className="h-9 bg-gray-200 rounded mt-2" />
           </div>
         </div>
       ))}

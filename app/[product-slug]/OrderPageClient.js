@@ -1582,8 +1582,6 @@ const handleWhatsappOrder = () => {
   // This prevents infinite loading when product data is available but loading state is slow
   const shouldShowLoading = loading && !products?.id;
 
-  console.log('[OrderPage] Render - loading:', loading, 'headerLoading:', headerLoading, 'products.id:', products?.id, 'slug:', slug, 'shouldShowLoading:', shouldShowLoading);
-
   if (shouldShowLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-white">
@@ -1594,6 +1592,19 @@ const handleWhatsappOrder = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
+      {/* ── Order-success overlay ─────────────────────────────────────────────
+          Shows the instant the order is saved (before the route transition
+          completes), so the user gets immediate feedback instead of staring at
+          a "প্রসেসিং..." button while the thank-you/upsell page loads. */}
+      {dataSaved && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/95 backdrop-blur-sm p-6 text-center">
+          <div className="text-5xl mb-4">✅</div>
+          <div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-600 animate-spin mb-4" />
+          <h2 className="text-lg font-bold text-gray-800 mb-1">অর্ডার সফল হয়েছে!</h2>
+          <p className="text-sm text-gray-500">আপনাকে পরবর্তী পেজে নিয়ে যাওয়া হচ্ছে…</p>
+        </div>
+      )}
+
       {/* ── Size Guide Modal ──────────────────────────────────────────────── */}
       {showSizeGuide && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"

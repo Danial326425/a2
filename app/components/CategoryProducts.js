@@ -9,7 +9,11 @@ import { ProductContext } from '../context/ProductsContext';
 import CartPanel from './CartPanel';
 import { config } from '@/config/config';
 
-const imageProxyUrl = '/api/storage';
+// Fetch images straight from the backend storage origin (same pattern the
+// product page already uses) instead of routing every image through the
+// /api/storage proxy. The optimizer hits the backend directly → one fewer hop
+// per image on a cold load. remotePatterns already whitelists this origin.
+const imageProxyUrl = config.imageUrl;
 
 export default function CategoryProducts() {
   const { products, categories } = useContext(ProductContext);
@@ -123,7 +127,10 @@ export default function CategoryProducts() {
   // every product image was loading="lazy", so on mobile the LCP image only
   // appeared after the grid hydrated → LCP ~8s.
   const sections = useMemo(() => {
-    let priorityBudget = 4;
+    // Only the first mobile row (2-col grid) is a realistic above-the-fold LCP
+    // candidate. Eager-loading more just steals bandwidth/optimizer slots from
+    // the banner + that first row on a cold load, which delays LCP.
+    let priorityBudget = 2;
     const out = [];
     for (const category of homepageCategories) {
       const all = products
