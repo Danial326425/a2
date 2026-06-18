@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { config } from "../../../config";
-import { FileText, Plus, Trash2, Pencil } from "lucide-react";
+import { FileText, Plus, Trash2, Pencil, RefreshCw } from "lucide-react";
 import {
   SectionCard, ActionBtn, Badge, Table, THead, TH, TBody, TR, TD,
   TableSkeleton, EmptyState, ErrorBanner, SuccessAlert, Drawer,
@@ -11,6 +11,11 @@ import {
 } from "../../components/Dashboard/DashUI";
 
 const apiUrl = config.apiUrl;
+
+const authHeaders = () => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 const EMPTY = {
   name: "", meta_template_name: "", category: "utility",
@@ -27,6 +32,7 @@ const MessagingTemplates = () => {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [toDelete, setToDelete] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -41,6 +47,23 @@ const MessagingTemplates = () => {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Pull the real approved templates (name, language, variable count) from Meta
+  // so the Status Messages tab can map variables accurately.
+  const syncFromMeta = async () => {
+    setSyncing(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await axios.post(`${apiUrl}/admin/whatsapp/templates/sync`, {}, { headers: authHeaders() });
+      setSuccess(res.data.message || "Templates synced from Meta");
+      await load();
+    } catch (e) {
+      setError(e?.response?.data?.message || "Failed to sync templates from Meta");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const openCreate = () => { setEditing(null); setForm(EMPTY); setDrawer(true); };
   const openEdit = (t) => {
@@ -103,7 +126,10 @@ const MessagingTemplates = () => {
       {error && <ErrorBanner message={error} />}
       {success && <SuccessAlert message={success} />}
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <ActionBtn variant="secondary" icon={RefreshCw} onClick={syncFromMeta} loading={syncing}>
+          Sync from Meta
+        </ActionBtn>
         <ActionBtn icon={Plus} onClick={openCreate}>New Template</ActionBtn>
       </div>
 
