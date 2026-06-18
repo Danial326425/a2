@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { config } from "../../../config";
-import { KeyRound, Plug, Copy, Check } from "lucide-react";
+import { KeyRound, Plug, Copy, Check, ShieldCheck } from "lucide-react";
 import {
   SectionCard, ActionBtn, Badge, FormField, Input, Textarea,
   ErrorBanner, SuccessAlert, Spinner, InfoBox,
@@ -30,6 +30,8 @@ const MessagingConnection = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [pin, setPin] = useState("");
+  const [registering, setRegistering] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -77,6 +79,33 @@ const MessagingConnection = () => {
       setError(e?.response?.data?.message || "Failed to save WhatsApp settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const registerNumber = async () => {
+    setError(null);
+    setSuccess(null);
+    if (!/^\d{6}$/.test(pin)) {
+      setError("PIN must be exactly 6 digits.");
+      return;
+    }
+    setRegistering(true);
+    try {
+      const res = await axios.post(
+        `${apiUrl}/admin/whatsapp/register`,
+        { pin },
+        { headers: authHeaders() }
+      );
+      setSuccess(res.data.message || "Phone number registered on Cloud API.");
+      setConfigured(true);
+      setPin("");
+    } catch (e) {
+      setError(
+        e?.response?.data?.message ||
+          "Registration failed. Make sure the token + phone number ID are saved and the number is on the Cloud API."
+      );
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -139,6 +168,39 @@ const MessagingConnection = () => {
             <ActionBtn icon={KeyRound} onClick={save} loading={saving}>Save Credentials</ActionBtn>
           </div>
         </div>
+      </SectionCard>
+
+      <SectionCard>
+        <div className="flex items-center gap-2.5 mb-4">
+          <ShieldCheck size={18} className="text-gray-400" />
+          <h3 className="text-sm font-semibold text-gray-800">Register on Cloud API</h3>
+        </div>
+
+        <p className="text-xs text-gray-500 mb-3">
+          One-time step: registers the saved phone number on the WhatsApp Cloud API and sets its
+          two-step verification PIN. Required before the number can send. Save your credentials
+          above first.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+          <FormField label="6-digit PIN" hint="Choose any 6 digits — this becomes the number's two-step PIN. Write it down.">
+            <Input
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="123456"
+            />
+          </FormField>
+          <ActionBtn icon={ShieldCheck} onClick={registerNumber} loading={registering}>
+            Register Number
+          </ActionBtn>
+        </div>
+
+        <InfoBox variant="info" className="mt-3">
+          If Meta replies that the number is an <code>SMB</code> / On-Premise account, it isn&apos;t on
+          the Cloud API yet — add &amp; verify it in WhatsApp Manager first, then register here.
+        </InfoBox>
       </SectionCard>
 
       <SectionCard>
