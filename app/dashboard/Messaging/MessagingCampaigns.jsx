@@ -18,16 +18,27 @@ const STATUS_VARIANT = {
   completed: "purple", paused: "warning",
 };
 
+// How many {{n}} variables a template expects — prefer the Meta-synced count,
+// else scan the stored body text.
+const templateVarCount = (t) => {
+  const s = t?.body_params_schema || {};
+  if (s.variable_count != null) return Number(s.variable_count);
+  const m = (s.text || "").match(/\{\{\s*(\d+)\s*\}\}/g);
+  if (!m) return 0;
+  return Math.max(...m.map((x) => parseInt(x.replace(/\D/g, ""), 10)));
+};
+
 const MessagingCampaigns = () => {
   const [items, setItems] = useState([]);
   const [segments, setSegments] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
   const [drawer, setDrawer] = useState(false);
-  const [form, setForm] = useState({ name: "", segment_id: "", template_id: "", scheduled_at: "" });
+  const [form, setForm] = useState({ name: "", segment_id: "", template_id: "", scheduled_at: "", variable_map: [] });
   const [saving, setSaving] = useState(false);
   const [toDelete, setToDelete] = useState(null);
 
@@ -40,6 +51,7 @@ const MessagingCampaigns = () => {
         axios.get(`${apiUrl}/message-templates`),
       ]);
       setItems(c.data.campaigns || []);
+      setTokens(c.data.tokens || []);
       setSegments(s.data.segments || []);
       // Campaigns send marketing templates only.
       setTemplates((t.data.templates || []).filter((x) => x.category === "marketing"));
@@ -52,6 +64,24 @@ const MessagingCampaigns = () => {
 
   useEffect(() => { load(); }, []);
 
+  // Picking a template resizes the variable map to its variable count; {{1}}
+  // defaults to the contact name, the rest to empty (operator fills them).
+  const onSelectTemplate = (e) => {
+    const template_id = e.target.value;
+    const tpl = templates.find((t) => String(t.id) === String(template_id));
+    const count = tpl ? templateVarCount(tpl) : 0;
+    const variable_map = Array.from({ length: count }, (_, i) =>
+      form.variable_map?.[i] ?? (i === 0 ? "name" : "")
+    );
+    setForm({ ...form, template_id, variable_map });
+  };
+
+  const setVar = (idx, value) => {
+    const next = [...(form.variable_map || [])];
+    next[idx] = value;
+    setForm({ ...form, variable_map: next });
+  };
+
   const create = async () => {
     setSaving(true);
     setError(null);
@@ -61,12 +91,13 @@ const MessagingCampaigns = () => {
         segment_id: form.segment_id,
         template_id: form.template_id,
         channel: "whatsapp",
+        variable_map: form.variable_map || [],
       };
       if (form.scheduled_at) payload.scheduled_at = form.scheduled_at;
       await axios.post(`${apiUrl}/campaigns`, payload);
       setSuccess("Campaign created");
       setDrawer(false);
-      setForm({ name: "", segment_id: "", template_id: "", scheduled_at: "" });
+      setForm({ name: "", segment_id: "", template_id: "", scheduled_at: "", variable_map: [] });
       load();
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to create campaign");
@@ -99,6 +130,10 @@ const MessagingCampaigns = () => {
   };
 
   const canCreate = segments.length > 0 && templates.length > 0;
+
+  const selectedTpl = templates.find((t) => String(t.id) === String(form.template_id));
+  const varCount = selectedTpl ? templateVarCount(selectedTpl) : 0;
+  const tplBody = selectedTpl?.body_params_schema?.text || "";
 
   return (
     <div className="space-y-4">
@@ -169,13 +204,68 @@ const MessagingCampaigns = () => {
             </Select>
           </FormField>
           <FormField label="Marketing template" required>
-            <Select value={form.template_id} onChange={(e) => setForm({ ...form, template_id: e.target.value })}>
+            <Select value={form.template_id} onChange={onSelectTemplate}>
               <option value="">Select a template…</option>
               {templates.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
+                <option key={t.id} value={t.id}>{t.name} ({t.language}, {templateVarCount(t)} var)</option>
               ))}
             </Select>
           </FormField>
+
+          {/* Variable mapping — one row per {{n}} in the chosen template */}
+          {form.template_id && (
+            <div className="rounded-lg border border-gray-200 p-3 space-y-2">
+              <p className="text-xs font-semibold text-gray-700">Template variables</p>
+              {tplBody && (
+                <p className="text-xs text-gray-500 bg-gray-50 rounded-md px-2.5 py-1.5 whitespace-pre-wrap">{tplBody}</p>
+              )}
+              {varCount === 0 ? (
+                <p className="text-xs text-gray-400">This template has no variables — nothing to set.</p>
+              ) : (
+                Array.from({ length: varCount }).map((_, idx) => {
+                  const entry = form.variable_map?.[idx] ?? "";
+                  const isCustom = entry.startsWith("lit:");
+                  const isName = entry === "name" || entry.startsWith("name|");
+                  const isPhone = entry === "phone";
+                  const dropdownVal = isCustom ? "__custom__" : isName ? "name" : isPhone ? "phone" : "";
+                  const nameFallback = isName && entry.includes("|") ? entry.split("|")[1] : "";
+                  return (
+                    <div key={idx} className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-mono text-gray-400 w-9 shrink-0">{`{{${idx + 1}}}`}</span>
+                      <Select
+                        value={dropdownVal}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setVar(idx, v === "__custom__" ? "lit:" : v);
+                        }}
+                      >
+                        <option value="">— select —</option>
+                        {tokens.map((t) => (
+                          <option key={t.key} value={t.key}>{t.label}</option>
+                        ))}
+                        <option value="__custom__">Custom text…</option>
+                      </Select>
+                      {isName && (
+                        <Input
+                          value={nameFallback}
+                          onChange={(e) => setVar(idx, e.target.value ? `name|${e.target.value}` : "name")}
+                          placeholder="If no name, use… (e.g. প্রিয় গ্রাহক)"
+                        />
+                      )}
+                      {isCustom && (
+                        <Input
+                          value={entry.slice(4)}
+                          onChange={(e) => setVar(idx, "lit:" + e.target.value)}
+                          placeholder="Custom text"
+                        />
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
           <FormField label="Schedule (optional)" hint="Leave empty to start manually. The drip respects daily warm-up caps regardless.">
             <Input type="datetime-local" value={form.scheduled_at} onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })} />
           </FormField>

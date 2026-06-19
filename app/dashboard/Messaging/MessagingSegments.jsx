@@ -34,6 +34,8 @@ const MessagingSegments = () => {
   const [importStatus, setImportStatus] = useState("all");
   const [importOptIn, setImportOptIn] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importFrom, setImportFrom] = useState("");
+  const [importTo, setImportTo] = useState("");
   const [loadingStatuses, setLoadingStatuses] = useState(false);
 
   // "Add by baby age" — target by baby_birth_month age range.
@@ -106,13 +108,15 @@ const MessagingSegments = () => {
     }
   };
 
-  const openImport = async (segment) => {
-    setImportFor(segment);
-    setImportStatus("all");
-    setImportOptIn(false);
+  // Fetch the status breakdown for the current order-date range. Re-run whenever
+  // the operator changes the From/To dates so the counts always reflect them.
+  const fetchImportStatuses = async (from, to) => {
     setLoadingStatuses(true);
     try {
-      const res = await axios.get(`${apiUrl}/messaging/customer-statuses`);
+      const params = {};
+      if (from) params.from = from;
+      if (to) params.to = to;
+      const res = await axios.get(`${apiUrl}/messaging/customer-statuses`, { params });
       setStatuses(res.data.statuses || []);
       setTotalPhones(res.data.total || 0);
     } catch (e) {
@@ -122,14 +126,31 @@ const MessagingSegments = () => {
     }
   };
 
+  const openImport = async (segment) => {
+    setImportFor(segment);
+    setImportStatus("all");
+    setImportOptIn(false);
+    setImportFrom("");
+    setImportTo("");
+    fetchImportStatuses("", "");
+  };
+
+  const onImportDate = (which) => (e) => {
+    const value = e.target.value;
+    const from = which === "from" ? value : importFrom;
+    const to = which === "to" ? value : importTo;
+    if (which === "from") setImportFrom(value); else setImportTo(value);
+    fetchImportStatuses(from, to);
+  };
+
   const runImport = async () => {
     setImporting(true);
     setError(null);
     try {
-      const res = await axios.post(`${apiUrl}/segments/${importFor.id}/import-customers`, {
-        status: importStatus,
-        wa_opt_in: importOptIn,
-      });
+      const payload = { status: importStatus, wa_opt_in: importOptIn };
+      if (importFrom) payload.from = importFrom;
+      if (importTo) payload.to = importTo;
+      const res = await axios.post(`${apiUrl}/segments/${importFor.id}/import-customers`, payload);
       const skipped = res.data.skipped ? `, ${res.data.skipped} skipped (invalid)` : "";
       setSuccess(`${res.data.attached} customer(s) added to segment${skipped}`);
       setImportFor(null);
@@ -273,7 +294,7 @@ const MessagingSegments = () => {
                     <span className="font-medium text-gray-800">{s.name}</span>
                     {s.description && <p className="text-xs text-gray-400">{s.description}</p>}
                   </TD>
-                  <TD><Badge variant={s.type === "bulk" ? "orange" : s.type === "lifecycle" ? "purple" : "gray"}>{s.type}</Badge></TD>
+                  <TD><Badge variant={s.type === "bulk" ? "orange" : "gray"}>{s.type}</Badge></TD>
                   <TD>{s.contacts_count ?? 0}</TD>
                   <TD className="text-right">
                     <div className="inline-flex gap-1.5">
@@ -300,7 +321,6 @@ const MessagingSegments = () => {
             <Select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
               <option value="manual">Manual</option>
               <option value="bulk">Bulk (cold / SMS)</option>
-              <option value="lifecycle">Lifecycle</option>
             </Select>
           </FormField>
           <FormField label="Description">
@@ -407,6 +427,13 @@ const MessagingSegments = () => {
       {/* Add from orders (bulk import by status) */}
       <Drawer isOpen={!!importFor} onClose={() => setImportFor(null)} title={`Add from orders → ${importFor?.name || ""}`}>
         <div className="space-y-4">
+          <FormField label="Order date range (optional)" hint="Filters by order date. Leave empty for all-time.">
+            <div className="grid grid-cols-2 gap-2">
+              <Input type="date" value={importFrom} onChange={onImportDate("from")} max={importTo || undefined} />
+              <Input type="date" value={importTo} onChange={onImportDate("to")} min={importFrom || undefined} />
+            </div>
+          </FormField>
+
           <FormField label="Which orders?" hint="Customers are deduped by phone — repeat buyers count once.">
             <Select value={importStatus} onChange={(e) => setImportStatus(e.target.value)} disabled={loadingStatuses}>
               <option value="all">All orders ({totalPhones})</option>

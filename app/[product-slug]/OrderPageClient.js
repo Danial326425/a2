@@ -630,7 +630,13 @@ const OrderPageClient = ({ slug, initialProduct }) => {
   // image is in the SSR HTML with priority/preload (no client round-trip, no
   // layout shift). After hydration `products`/`currentImage` take over for
   // colour switching + zoom.
-  const displayProduct = products || initialProduct || null;
+  // Prefer the SERVER-fetched `initialProduct` until the client OrderContext has
+  // hydrated a REAL product (one with an id). The context's default `products`
+  // is a truthy empty object (price 0, name ''), so `products || initialProduct`
+  // would never fall through — hence the explicit `?.id` check. This is what
+  // lets name/price/total render with real values in the SSR HTML (no flash of
+  // ৳0 / "অর্ডার ফর্ম" before hydration).
+  const displayProduct = (products && products.id) ? products : (initialProduct || products);
   const primaryImage =
     currentImage ||
     displayProduct?.colors?.[0]?.image ||
@@ -680,6 +686,13 @@ const OrderPageClient = ({ slug, initialProduct }) => {
     bumpsTotal = 0,
     bulkDiscount = 0,
   } = calculatedPrices;
+
+  // SSR/first-paint fallbacks: the context `products` (and thus calculatePrices)
+  // is empty until hydration, so basePrice/totalPrice are 0 on the server render.
+  // Derive a sensible value from the SERVER-fetched `displayProduct` so the
+  // customer never sees ৳0 before the JS hydrates.
+  const displayUnitPrice = Number(displayProduct?.discount_price ?? displayProduct?.price ?? 0);
+  const displayBasePrice = Number(basePrice) > 0 ? Number(basePrice) : displayUnitPrice * (quantity || 1);
 
 
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -1745,27 +1758,27 @@ const handleWhatsappOrder = () => {
           <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
             <div className="p-6 sm:p-8">
               <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-4 border-gray-100">
-                {products.name || 'অর্ডার ফর্ম'}
+                {displayProduct?.name || 'অর্ডার ফর্ম'}
               </h2>
 
               {/* প্রাইস সেকশন যোগ করুন */}
               <div className="flex justify-start items-center gap-4 mb-4">
-                {products.discount_price ? (
+                {displayProduct?.discount_price ? (
                   <>
                     <span className="text-xl text-gray-500 line-through">
-                      ৳{products.price}
+                      ৳{displayProduct.price}
                     </span>
                     <span className="text-2xl font-bold text-[#fa582c]">
-                      ৳{products.discount_price}
+                      ৳{displayProduct.discount_price}
                     </span>
                     
                     <span className="text-sm bg-[#dd3737] text-white px-2 py-1 rounded-full">
-                      {Math.round(((products.price - products.discount_price) / products.price) * 100)}% ছাড়
+                      {Math.round(((displayProduct.price - displayProduct.discount_price) / displayProduct.price) * 100)}% ছাড়
                     </span>
                   </>
                 ) : (
                   <span className="text-2xl font-bold text-green-600">
-                    ৳{products.price}
+                    ৳{displayProduct?.price ?? 0}
                   </span>
                 )}
               </div>
@@ -2217,17 +2230,17 @@ const handleWhatsappOrder = () => {
                 <div className="mt-8 p-4 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg border border-gray-200">
                   <h3 className="text-lg font-bold text-gray-800 mb-3">মূল্য বিবরণী</h3>
                   
-                  {products.discount_price && (
+                  {displayProduct?.discount_price && (
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-600">প্রকৃত মূল্য:</span>
-                      <span className="text-gray-600 line-through">৳{products.price * quantity} </span>
+                      <span className="text-gray-600 line-through">৳{displayProduct.price * quantity} </span>
                     </div>
                   )}
                   
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-600">ডিস্কাউন্ট মূল্য:</span>
                     <span className="font-medium text-blue-600">
-                      ৳{products.discount_price ? products.discount_price * quantity : products.price * quantity} 
+                      ৳{displayProduct?.discount_price ? displayProduct.discount_price * quantity : (displayProduct?.price || 0) * quantity}
                     </span>
                   </div>
 
@@ -2276,7 +2289,7 @@ const handleWhatsappOrder = () => {
                         // `totalPrice` already includes delivery in the current render.
                         const subtotalNoDelivery = Math.max(
                           0,
-                          Number(basePrice || 0) + Number(bumpsTotal || 0) - Number(bulkDiscount || 0)
+                          Number(displayBasePrice || 0) + Number(bumpsTotal || 0) - Number(bulkDiscount || 0)
                         );
                         const couponDisc = appliedCoupon && !appliedCoupon.free_delivery
                           ? Math.round(Number(appliedCoupon.discount || 0))

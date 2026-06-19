@@ -36,7 +36,14 @@ const DEFAULT_OG_IMAGE_PATH = '/og-default.png';
  *  Strips trailing slashes. This is what keeps og:image / canonical off
  *  http://localhost:3000 in production. */
 function siteBase(siteUrl) {
-  return String(siteUrl || config.siteUrl || '').replace(/\/+$/, '');
+  const v = String(siteUrl || '').replace(/\/+$/, '');
+  // Guard against a stale localhost value coming from the dashboard "Site URL"
+  // field (or an unset env) leaking into canonical/og URLs — fall back to the
+  // configured production site URL instead.
+  if (!v || /^https?:\/\/localhost(:\d+)?(\/|$)/i.test(v)) {
+    return String(config.siteUrl || '').replace(/\/+$/, '');
+  }
+  return v;
 }
 
 /* ── utilities ─────────────────────────────────────────────────────────── */
