@@ -73,6 +73,7 @@ const InventoryOverview   = dynamic(() => import("./Inventory/InventoryOverview"
 const StockReport         = dynamic(() => import("./Inventory/StockReport"),       { ssr: false });
 const AdsPerformance      = dynamic(() => import("./AdsPerformance/AdsPerformance"), { ssr: false });
 const Messaging           = dynamic(() => import("./Messaging/Messaging"), { ssr: false });
+const SmsManager          = dynamic(() => import("./Sms/SmsManager"), { ssr: false });
 const ExchangeManager     = dynamic(() => import("./Exchange/ExchangeManager"), { ssr: false });
 
 
@@ -163,6 +164,7 @@ const Dashboard = () => {
         "inventoryOverview", "stockReport",
         "adsPerformance",
         "messaging",
+        "sms",
         "exchange"
       ],
       moderator: [
@@ -294,6 +296,8 @@ const Dashboard = () => {
         return <AdsPerformance />;
       case "messaging":
         return <Messaging />;
+      case "sms":
+        return <SmsManager />;
       case "exchange":
         return <ExchangeManager />;
       case "seoSettings":

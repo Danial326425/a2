@@ -42,6 +42,7 @@ import {
   MenuIcon,
   Search,
   MessageCircle,
+  MessageSquare,
   RefreshCw,
 } from "lucide-react";
 import axios from "axios";
@@ -243,6 +244,12 @@ const MENU_GROUPS = [
         key: "messaging",
         directItem: "messaging",
       },
+      {
+        title: "SMS",
+        icon: MessageSquare,
+        key: "sms",
+        directItem: "sms",
+      },
     ],
   },
   {
@@ -437,6 +444,7 @@ const ROLE_ACCESS = {
     adsPerformance: ["adsPerformance"],
     seo: ["seoSettings"],
     messaging: ["messaging"],
+    sms: ["sms"],
     coupons: { couponsSub: ["createCoupon", "couponOverview"] },
     cartRewards: { cartRewardsSub: ["createCartReward", "cartRewardOverview"] },
     steadfast: { steadfastSub: ["createSteadfast", "steadfastOverview"] },
